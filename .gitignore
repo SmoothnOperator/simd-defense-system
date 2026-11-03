@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Environment and IDE
+.env
+.env.*
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

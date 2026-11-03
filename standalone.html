@@ -1,0 +1,3899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMD EXPLORER // PRIVACY SYSTEM DEFENSE HUD</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-card: rgba(14, 15, 18, 0.92);
+            --bg-card-hover: rgba(22, 24, 28, 0.96);
+            --border-cyan: rgba(255, 255, 255, 0.12);
+            --border-glow: #00ff88;
+            --neon-cyan: #00ff88;
+            --neon-blue: #10b981;
+            --neon-electric: #00ff88;
+            --neon-crimson: #f59e0b;
+            --neon-red: #fbbf24;
+            --neon-emerald: #00ff88;
+            --neon-green: #10b981;
+            --neon-amber: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #d1d5db;
+            --text-dim: #9ca3af;
+            --text-green: #00ff88;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-display: 'Orbitron', sans-serif;
+            --font-sans: 'Inter', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 255, 136, 0.15) 0%, rgba(16, 185, 129, 0.04) 45%, transparent 75%),
+                radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 0% 40%, rgba(0, 255, 136, 0.08) 0%, transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        }
+
+        /* Ambient animated scanning line */
+        .scanline-beam {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.6), transparent);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+            z-index: 9999;
+            pointer-events: none;
+            animation: scanlineMove 6s linear infinite;
+        }
+
+        @keyframes scanlineMove {
+            0% { transform: translateY(-5px); opacity: 0; }
+            5% { opacity: 1; }
+            95% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        /* Top HUD Navigation Bar */
+        .hud-header {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 20px 24px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-cyan);
+            background: rgba(14, 15, 18, 0.94);
+            backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6);
+        }
+
+        .hud-brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .hud-logo {
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--neon-emerald);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 255, 136, 0.12);
+            box-shadow: 0 0 18px rgba(0, 255, 136, 0.4);
+            position: relative;
+        }
+
+        .hud-logo::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: var(--neon-emerald);
+            border-radius: 50%;
+            animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(0.85); box-shadow: 0 0 4px var(--neon-emerald); }
+            50% { transform: scale(1.3); box-shadow: 0 0 16px var(--neon-emerald), 0 0 25px rgba(0, 255, 136, 0.4); }
+        }
+
+        .hud-title h1 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #ffffff, var(--neon-emerald));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .hud-title p {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--neon-emerald);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .hud-telemetry {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .telemetry-item {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .telemetry-label { color: var(--text-dim); font-size: 0.68rem; letter-spacing: 1px; }
+        .telemetry-val { color: var(--neon-emerald); font-weight: 700; text-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+
+        .audio-toggle-btn {
+            background: rgba(0, 242, 254, 0.08);
+            border: 1px solid var(--border-cyan);
+            color: var(--neon-cyan);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .audio-toggle-btn:hover {
+            background: rgba(0, 242, 254, 0.2);
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+        }
+
+        /* Container & Tabs */
+        .main-container {
+            max-width: 1360px;
+            margin: 24px auto 40px;
+            padding: 0 24px;
+        }
+
+        .hud-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: rgba(14, 15, 18, 0.85);
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .hud-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hud-tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .hud-tab-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .hud-tab-btn.active {
+            color: #ffffff;
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--neon-emerald);
+            box-shadow: 0 0 18px rgba(0, 255, 136, 0.35);
+        }
+
+        /* Cyber Glass Cards */
+        .cyber-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-cyan);
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), inset 0 0 1px 1px rgba(255, 255, 255, 0.05);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .cyber-card::before, .cyber-card::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+        }
+        .cyber-card::before { top: -1px; left: -1px; border-top: 2px solid var(--neon-emerald); border-left: 2px solid var(--neon-emerald); }
+        .cyber-card::after { bottom: -1px; right: -1px; border-bottom: 2px solid rgba(255, 255, 255, 0.25); border-right: 2px solid rgba(255, 255, 255, 0.25); }
+
+        .card-header-hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+        }
+
+        .card-header-hud h2, .card-header-hud h3 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-subtext {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+
+        .layout-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .layout-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+        @media (max-width: 960px) {
+            .layout-2col, .layout-3col { grid-template-columns: 1fr; }
+        }
+
+        /* Controls */
+        select, input[type="number"], input[type="range"] {
+            width: 100%;
+            background: rgba(14, 15, 18, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #ffffff;
+            font-family: var(--font-mono);
+            font-size: 0.88rem;
+            outline: none;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--neon-emerald);
+            box-shadow: 0 0 12px rgba(0, 255, 136, 0.45);
+        }
+
+        .cyber-btn {
+            background: rgba(0, 255, 136, 0.12);
+            border: 1px solid var(--neon-emerald);
+            color: #ffffff;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 0 16px rgba(0, 255, 136, 0.25);
+        }
+
+        .cyber-btn:hover {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: #00ff88;
+            box-shadow: 0 0 24px rgba(0, 255, 136, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .cyber-btn:active { transform: translateY(1px); }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+
+        /* Code Inspection Block with Scanline */
+        .cyber-code-block {
+            background: #080808;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            position: relative;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        .cyber-code-block .laser-scan {
+            position: absolute;
+            left: 0; right: 0; height: 2px;
+            background: var(--neon-emerald);
+            box-shadow: 0 0 14px var(--neon-emerald);
+            top: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .cyber-code-block.scanning .laser-scan {
+            opacity: 1;
+            animation: codeSweep 1.2s ease-in-out infinite;
+        }
+
+        @keyframes codeSweep {
+            0% { top: 0%; opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0.3; }
+        }
+
+        /* Status & Threat Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .badge-secure {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--neon-emerald);
+            color: #34d399;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--neon-amber);
+            color: #fbbf24;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-danger {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--neon-amber);
+            color: #fbbf24;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Metrics & Counters */
+        .stat-card-hud {
+            background: rgba(14, 15, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .stat-card-hud .stat-label {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .stat-card-hud .stat-number {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .stat-card-hud .stat-sub {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--neon-emerald);
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+            margin-top: 4px;
+        }
+
+        /* Canvas for PE Mesh Simulation */
+        #simCanvas {
+            width: 100%;
+            min-height: 300px;
+            background: rgba(8, 8, 8, 0.96);
+            border: 1px solid rgba(0, 255, 136, 0.35);
+            box-shadow: 0 6px 25px rgba(0, 255, 136, 0.15);
+            border-radius: 8px;
+            display: block;
+            margin-top: 14px;
+        }
+
+        /* Playback Controller Bar */
+        .playback-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(14, 15, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-top: 14px;
+        }
+
+        .playback-controls { display: flex; gap: 8px; }
+
+        .icon-btn {
+            background: rgba(20, 22, 26, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--neon-emerald);
+            color: #00ff88;
+            box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+        }
+
+        .icon-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--neon-emerald);
+            color: #00ff88;
+            font-weight: 700;
+        }
+
+        /* Vector Register Strip-Mining Visualizer */
+        .strip-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .strip-chunk-box {
+            background: rgba(14, 15, 18, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .strip-chunk-box.highlight {
+            border-color: var(--neon-emerald);
+            box-shadow: 0 0 18px rgba(0, 255, 136, 0.45);
+        }
+
+        .strip-chunk-box .chunk-fill {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0, 255, 136, 0.15);
+            transition: height 0.3s;
+            pointer-events: none;
+        }
+
+        /* Canvas Charts for Graphs */
+        #chartCanvas {
+            width: 100%;
+            height: 320px;
+            background: rgba(8, 8, 8, 0.96);
+            border: 1px solid rgba(0, 255, 136, 0.35);
+            box-shadow: 0 6px 25px rgba(0, 255, 136, 0.15);
+            border-radius: 8px;
+            display: block;
+        }
+
+        /* Progress telemetry bar */
+        .telemetry-progress-bg {
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            border-radius: 9999px;
+            height: 12px;
+            overflow: hidden;
+            margin: 6px 0 14px;
+            position: relative;
+        }
+
+        .telemetry-progress-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .telemetry-progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0; right: 0; width: 8px;
+            background: #ffffff;
+            box-shadow: 0 0 10px #ffffff;
+            border-radius: 50%;
+        }
+
+        /* Tab Content visibility */
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: fadeIn 0.35s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .defense-dossier {
+            background: rgba(2, 6, 23, 0.85);
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .defense-dossier summary {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            cursor: pointer;
+            outline: none;
+        }
+
+        .defense-dossier p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+
+        /* Standby Radar & Result Reveal Animations */
+        .standby-radar {
+            width: 86px;
+            height: 86px;
+            border: 2px dashed rgba(0, 242, 254, 0.35);
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: radarSpin 8s linear infinite;
+        }
+
+        .standby-radar::before {
+            content: '';
+            width: 50px;
+            height: 50px;
+            border: 1px solid var(--neon-cyan);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
+        }
+
+        .standby-radar::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 12px var(--neon-cyan);
+            animation: pulseGlow 1.4s infinite;
+        }
+
+        @keyframes radarSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .result-reveal {
+            animation: cyberReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cyberReveal {
+            0% { opacity: 0; transform: translateY(14px) scale(0.97); filter: blur(4px); }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .scan-progress-strip {
+            height: 6px;
+            background: rgba(0, 242, 254, 0.15);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin: 14px 0;
+            position: relative;
+        }
+
+        .scan-progress-strip .scan-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan));
+            box-shadow: 0 0 10px var(--neon-cyan);
+            border-radius: 9999px;
+            transition: width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* SIMD Lane Matrix */
+        .simd-lane-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .simd-lane-grid.lanes-16 {
+            grid-template-columns: repeat(16, 1fr);
+            gap: 4px;
+        }
+
+        .simd-lane-grid.lanes-16 .lane-box {
+            padding: 6px 2px;
+            font-size: 0.65rem;
+        }
+
+        .simd-lane-grid.lanes-16 .lane-box strong {
+            font-size: 0.68rem;
+        }
+
+        .lane-box {
+            background: rgba(14, 15, 18, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lane-box.active {
+            border-color: var(--neon-emerald);
+            background: rgba(0, 255, 136, 0.22);
+            box-shadow: 0 0 16px rgba(0, 255, 136, 0.45);
+            color: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        .lane-box.hazard {
+            border-color: var(--neon-amber);
+            background: rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.45);
+            animation: hazardBlink 1.2s infinite;
+        }
+
+        .lane-box.masked {
+            border-color: var(--neon-amber);
+            background: rgba(245, 158, 11, 0.16);
+            opacity: 0.8;
+        }
+
+        .lane-box:hover {
+            cursor: pointer;
+            border-color: var(--neon-emerald) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 0 14px rgba(0, 255, 136, 0.45);
+        }
+
+        .lane-box.lane-animated {
+            animation: lanePop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes lanePop {
+            0% { opacity: 0; transform: translateY(8px) scale(0.92); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes hazardBlink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.55; transform: scale(0.96); }
+        }
+
+        /* Cyber range sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 3px;
+            border: 1px solid rgba(0, 242, 254, 0.35);
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--neon-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            border: 2px solid #ffffff;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            box-shadow: 0 0 16px var(--neon-cyan);
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--neon-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            border: 2px solid #ffffff;
+        }
+
+        .strip-chunk-box.active-running {
+            border-color: var(--neon-cyan) !important;
+            background: rgba(0, 242, 254, 0.15) !important;
+            box-shadow: 0 0 18px rgba(0, 242, 254, 0.5) !important;
+            animation: chunkPulse 1s infinite alternate;
+        }
+
+        @keyframes chunkPulse {
+            from { box-shadow: 0 0 10px rgba(0, 242, 254, 0.3); }
+            to { box-shadow: 0 0 22px rgba(0, 242, 254, 0.7); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated Scanline -->
+<div class="scanline-beam"></div>
+
+<!-- HUD Header -->
+<header class="hud-header">
+    <div class="hud-brand">
+        <div class="hud-logo"></div>
+        <div class="hud-title">
+            <h1>SIMD // DEFENSE SYSTEM</h1>
+            <p>VIV-SPEC 2026 // HIGH-ASSURANCE COMPUTATION &amp; ARCHITECTURE HUD</p>
+        </div>
+    </div>
+    <div class="hud-telemetry">
+        <div class="telemetry-item">
+            <span class="telemetry-label">SECURITY CLASSIFICATION</span>
+            <span class="telemetry-val" style="color: #ffffff;">AIR-GAPPED // TOP SECRET</span>
+        </div>
+        <div class="telemetry-item">
+            <span class="telemetry-label">SIMD PIPELINE TELEMETRY</span>
+            <span class="telemetry-val" id="hudClock">CYCLES: 0000 | 8 LANES</span>
+        </div>
+        <canvas id="oscCanvas" width="90" height="26" style="border-radius:4px; border:1px solid var(--border-cyan); display:block; background:rgba(6,8,10,0.85);" title="Real-time Acoustic Waveform Monitor"></canvas>
+        <button class="audio-toggle-btn" id="audioToggleBtn" onclick="toggleAudio()">
+            <span id="audioIcon">🔇</span> SOUND: <span id="audioStateText">MUTED</span>
+        </button>
+    </div>
+</header>
+
+<main class="main-container">
+
+    <!-- HUD Tab Navigation -->
+    <nav class="hud-tabs">
+        <button class="hud-tab-btn active" onclick="activateTab(0)">
+            <span>[01]</span> VECTORIZABILITY ANALYZER
+        </button>
+        <button class="hud-tab-btn" onclick="activateTab(1)">
+            <span>[02]</span> THREE-WAY SIMULATOR (C=A+B &amp; STENCIL)
+        </button>
+        <button class="hud-tab-btn" onclick="activateTab(2)">
+            <span>[03]</span> APPLICATION RECOMMENDER
+        </button>
+        <button class="hud-tab-btn" onclick="activateTab(3)">
+            <span>[04]</span> SPEEDUP &amp; AMDAHL TELEMETRY
+        </button>
+    </nav>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 1: VECTORIZABILITY ANALYZER -->
+    <!-- ==================================================================== -->
+    <section id="tab-pane-0" class="tab-pane active">
+        <div class="layout-2col">
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>🔍</span> CODE STREAM DIAGNOSTIC SCANNER</h3>
+                    <div style="display: flex; gap: 6px;">
+                        <button id="btnModePreset" class="cyber-btn" style="padding: 2px 10px; font-size: 0.68rem; border-color: var(--neon-emerald); background: rgba(0, 255, 136, 0.2);" onclick="toggleLoopInputMode('preset')">PRESET KERNELS</button>
+                        <button id="btnModeCustom" class="cyber-btn" style="padding: 2px 10px; font-size: 0.68rem;" onclick="toggleLoopInputMode('custom')">CUSTOM C-LOOP (AST)</button>
+                    </div>
+                </div>
+                
+                <div id="presetModeContainer">
+                    <div class="card-subtext">Select computational loop segment to execute parallel dependency audit:</div>
+                    <label style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);">SELECT TARGET KERNEL:</label>
+                    <select id="loopSelect" onchange="inspectLoop()">
+                        <option value="1">Loop 01: SAXPY Linear Combination (A[i] = 2.5 * B[i] + C[i])</option>
+                        <option value="2">Loop 02: RAW Recurrence / Prefix Scan (A[i] = A[i-1] + B[i])</option>
+                        <option value="3">Loop 03: Data-Dependent Branch Predication (if A[i] > 0)</option>
+                        <option value="4">Loop 04: Indirect Indexing / Gather (A[i] = B[idx[i]] * 1.5)</option>
+                        <option value="5">Loop 05: Scalar Accumulation / Reduction Tree (total += A[i])</option>
+                        <option value="6">Loop 06: 1D Spatial Stencil Smoothing (B[i] = 0.5*(A[i-1]+A[i+1]))</option>
+                    </select>
+                </div>
+
+                <div id="customModeContainer" style="display: none; margin-bottom: 12px;">
+                    <div class="card-subtext">Write custom C or Python loop logic to live-parse loop dependencies, branch divergence, and reduction trees:</div>
+                    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <button class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setCustomCodePreset('saxpy')">+ SAXPY</button>
+                        <button class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setCustomCodePreset('raw')">+ RAW Recurrence</button>
+                        <button class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setCustomCodePreset('branch')">+ Branch Divergence</button>
+                        <button class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setCustomCodePreset('reduction')">+ Reduction Sum</button>
+                        <button class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setCustomCodePreset('gather')">+ Gather Indirect</button>
+                    </div>
+                    <textarea id="customCodeInput" rows="5" style="width: 100%; font-family: var(--font-mono); font-size: 0.78rem; background: rgba(5,7,9,0.9); border: 1px solid var(--border-neon); color: #00ff88; padding: 10px; border-radius: 6px; resize: vertical;" oninput="onCustomCodeChange()">for (int i = 0; i < n; i++) {
+    A[i] = 2.5f * B[i] + C[i];
+}</textarea>
+                </div>
+
+                <div class="cyber-code-block" id="codeInspectionBox">
+                    <div class="laser-scan"></div>
+                    <div id="codeDisplayArea"></div>
+                </div>
+
+                <!-- SIMD Hardware Lane Status Grid -->
+                <div style="margin-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); letter-spacing: 1px;">
+                                HARDWARE SIMD LANES:
+                            </span>
+                            <div style="display: flex; gap: 4px;">
+                                <button id="btnLanes8" class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem;" onclick="setSimdLaneCount(8)">8 LANES (AVX2)</button>
+                                <button id="btnLanes16" class="cyber-btn" style="padding: 2px 8px; font-size: 0.65rem; border-color: var(--neon-cyan); background: rgba(56, 189, 248, 0.2);" onclick="setSimdLaneCount(16)">16 LANES (AVX-512)</button>
+                            </div>
+                        </div>
+                        <span id="laneStatusBadge" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-cyan);">
+                            LANES: STANDBY
+                        </span>
+                    </div>
+                    <div class="simd-lane-grid lanes-16" id="simdLaneGrid"></div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 14px;">
+                    <button class="cyber-btn" id="deepScanBtn" onclick="triggerLaserScan()">
+                        <span>⚡</span> RUN DEEP SECURITY SCAN
+                    </button>
+                </div>
+            </div>
+
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>🛡️</span> VECTORIZABILITY VERDICT</h3>
+                    <span id="scanStatusTag" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-amber);">STANDBY // AWAITING AUDIT</span>
+                </div>
+
+                <!-- STANDBY VIEW (Visible prior to clicking scan) -->
+                <div id="scanStandbyView" style="text-align: center; padding: 40px 16px;">
+                    <div class="standby-radar"></div>
+                    <div style="font-family: var(--font-mono); font-size: 0.92rem; color: var(--neon-cyan); font-weight: 700; margin-top: 18px; letter-spacing: 1px;">
+                        DIAGNOSTIC SUBSYSTEM // STANDBY
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin: 10px auto 0; max-width: 380px; line-height: 1.6;">
+                        Target kernel loaded into evaluation buffer.<br>
+                        Click <span style="color: var(--neon-cyan); font-weight: 700;">[RUN DEEP SECURITY SCAN]</span> to execute automated dependency hazard inspection and reveal verdict.
+                    </p>
+                </div>
+
+                <!-- SCAN IN PROGRESS VIEW -->
+                <div id="scanProgressArea" style="display: none; text-align: center; padding: 44px 16px;">
+                    <div style="font-family: var(--font-mono); font-size: 0.88rem; color: var(--neon-cyan); letter-spacing: 1.5px; margin-bottom: 14px;">
+                        ⚡ AUDITING ITERATION GRAPH &amp; HARDWARE HAZARDS...
+                    </div>
+                    <div class="scan-progress-strip">
+                        <div class="scan-fill" id="scanFillBar"></div>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); letter-spacing: 1px;">
+                        AUDITING MEMORY STRIDE &bull; NUMPY VECTOR PROVING &bull; PARSING HAZARDS
+                    </div>
+                </div>
+
+                <!-- RESULT REVEAL VIEW (Revealed after clicking scan) -->
+                <div id="scanResultView" style="display: none;">
+                    <div id="threatBadgeSlot"></div>
+
+                    <div style="margin: 16px 0; font-family: var(--font-mono); font-size: 0.85rem;">
+                        <div style="color: var(--text-dim); margin-bottom: 4px;">EQUIVALENCE VERIFICATION (NUMPY vs SCALAR):</div>
+                        <div style="color: var(--neon-emerald); font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">✓</span> ZERO DATA DIVERGENCE DETECTED (100% IDENTICAL OUTPUT)
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <h4 style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;">
+                            ARCHITECTURAL REASONING:
+                        </h4>
+                        <p id="loopReasonText" style="color: var(--text-primary); font-size: 0.9rem; margin-top: 6px; line-height: 1.6;"></p>
+                    </div>
+
+                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 14px;">
+                        <h4 style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--neon-amber); letter-spacing: 1px; text-transform: uppercase;">
+                            CRITICAL HARDWARE BOTTLENECK:
+                        </h4>
+                        <p id="loopHazardText" style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 6px; line-height: 1.5;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 2: THREE-WAY SIMULATOR & INTER-PE ANIMATION -->
+    <!-- ==================================================================== -->
+    <section id="tab-pane-1" class="tab-pane">
+        <!-- Control Header -->
+        <div class="cyber-card" style="margin-bottom: 20px;">
+            <div class="card-header-hud">
+                <h3><span>⚙️</span> THREE-WAY ARCHITECTURAL SIMULATOR</h3>
+                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-cyan);">MODULE 02 // SIMULATION SUBSYSTEM</span>
+            </div>
+
+            <div class="layout-3col">
+                <div>
+                    <label style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">COMPUTATION KERNEL:</label>
+                    <select id="simModeSelect" onchange="runSimEngine()">
+                        <option value="add">Standard Vector Addition: C = A + B (Independent)</option>
+                        <option value="stencil">1D Spatial Stencil: B[i] = A[i-1] + A[i+1] (Neighbor Comm)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">VECTOR LENGTH (n elements):</label>
+                    <input type="number" id="simNInput" value="64" min="8" max="512" step="8" onchange="runSimEngine()">
+                </div>
+                <div>
+                    <label style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">ARRAY PE GRID UNITS:</label>
+                    <select id="simPeCountSelect" onchange="runSimEngine()">
+                        <option value="4">4 PEs Lockstep</option>
+                        <option value="8" selected>8 PEs Lockstep (Standard)</option>
+                        <option value="16">16 PEs Lockstep</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry Cycle Metric Cards -->
+        <div class="layout-3col" style="margin-bottom: 24px;">
+            <div class="stat-card-hud" style="border-color: rgba(255, 255, 255, 0.2);">
+                <div class="stat-label">SCALAR PROCESSOR</div>
+                <div class="stat-number" id="statScalarCycles">320</div>
+                <div class="stat-sub">5 CYCLES / ELEMENT (BASELINE 1.0x)</div>
+            </div>
+            <div class="stat-card-hud" style="border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);">
+                <div class="stat-label" style="color: var(--neon-cyan);">VECTOR PROCESSOR (PIPELINED)</div>
+                <div class="stat-number" id="statVectorCycles" style="color: var(--neon-cyan);">76</div>
+                <div class="stat-sub" id="statVectorSpeedup">4.21x ACCELERATION</div>
+            </div>
+            <div class="stat-card-hud" style="border-color: var(--neon-emerald); box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);">
+                <div class="stat-label" style="color: var(--neon-emerald);">ARRAY PROCESSOR (LOCKSTEP PE MESH)</div>
+                <div class="stat-number" id="statArrayCycles" style="color: var(--neon-emerald);">24</div>
+                <div class="stat-sub" id="statArraySpeedup">13.33x ACCELERATION</div>
+            </div>
+        </div>
+
+        <!-- Animated PE Mesh Network & Strip Mining -->
+        <div class="layout-2col">
+            <!-- Left: Animated Inter-PE Grid Canvas -->
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>🛰️</span> ARRAY PE TOPOLOGY &amp; PACKET FLOW</h3>
+                    <span id="commActivityBadge" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-emerald);">MESH: IDLE</span>
+                </div>
+                <div class="card-subtext" id="peGridSummaryText">
+                    Simulating 8 PEs lockstep execution with Control Unit broadcasting.
+                </div>
+
+                <!-- 1D Linear Bus vs 2D Torus Mesh Topology Switcher -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;" id="topoToggleBar">
+                    <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">HARDWARE INTERCONNECT TOPOLOGY:</span>
+                    <div style="display: flex; gap: 6px;">
+                        <button id="btnTopo1D" class="cyber-btn" style="padding: 2px 10px; font-size: 0.68rem; border-color: var(--neon-emerald); background: rgba(0, 255, 136, 0.2);" onclick="setSimTopology('1d_bus')">1D LINEAR BUS</button>
+                        <button id="btnTopo2D" class="cyber-btn" style="padding: 2px 10px; font-size: 0.68rem; display: none;" onclick="setSimTopology('2d_mesh')">🖧 4×4 2D TORUS MESH</button>
+                    </div>
+                </div>
+
+                <!-- Animated Canvas -->
+                <canvas id="simCanvas"></canvas>
+
+                <!-- Time-Travel Cycle Scrubber -->
+                <div style="margin-top: 10px; background: rgba(10, 12, 14, 0.85); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-neon);">
+                    <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px;">
+                        <span>🎛️ TIME-TRAVEL CYCLE SCRUBBER:</span>
+                        <span id="scrubberLabel" style="color: var(--neon-emerald); font-weight: 700;">CYCLE 0 / 24</span>
+                    </div>
+                    <input type="range" id="cycleScrubber" min="0" max="24" value="0" style="width: 100%; accent-color: var(--neon-emerald); cursor: pointer;" oninput="onScrubberChange(this.value)">
+                </div>
+
+                <!-- Playback controls -->
+                <div class="playback-bar">
+                    <div class="playback-controls">
+                        <button class="icon-btn" id="playBtn" onclick="togglePlaySimulation()">▶ PLAY</button>
+                        <button class="icon-btn" onclick="stepSimulation()">⏭ STEP</button>
+                        <button class="icon-btn" onclick="resetSimulation()">↺ RESET</button>
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); display: flex; align-items: center; gap: 10px;">
+                        <span>SPEED:</span>
+                        <select id="simSpeedSelect" style="width: 80px; margin-bottom: 0; padding: 4px;" onchange="updateSimSpeed()">
+                            <option value="1">1.0x</option>
+                            <option value="2" selected>2.0x</option>
+                            <option value="4">4.0x</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 3-Way Hardware Race Benchmark Arena -->
+                <div style="margin-top: 14px; background: rgba(8, 9, 11, 0.95); border: 1px solid var(--border-neon); border-radius: 6px; padding: 12px;" id="raceArenaPanel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <h4 style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--neon-emerald); letter-spacing: 1px; margin: 0;">
+                                🏎️ 3-WAY HARDWARE BENCHMARK DRAG RACE ARENA
+                            </h4>
+                            <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); margin-top: 2px;">
+                                Visual cycle race: Scalar (5c/elem) vs Vector (12c startup + 1c/elem) vs Array (<span id="racePeLabel">8</span> PEs lockstep)
+                            </div>
+                        </div>
+                        <button class="cyber-btn" id="startRaceBtn" style="padding: 4px 12px; font-size: 0.72rem;" onclick="startHardwareRace()">
+                            START RACE
+                        </button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; margin-bottom: 3px;">
+                                <span style="color: #ffffff;">SCALAR PROCESSOR (1 elem/chunk @ 5 cycles)</span>
+                                <span id="raceScalarPct" style="color: var(--text-dim);">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                <div id="raceScalarBar" style="width: 0%; height: 100%; background: #94a3b8; transition: width 0.05s linear;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; margin-bottom: 3px;">
+                                <span style="color: #ffffff;">VECTOR PIPELINE (MVL=64, 12-cyc startup + 1c/elem sprint)</span>
+                                <span id="raceVectorPct" style="color: #ffffff;">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                <div id="raceVectorBar" style="width: 0%; height: 100%; background: #ffffff; transition: width 0.05s linear;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; margin-bottom: 3px;">
+                                <span style="color: var(--neon-emerald); font-weight: 700;">ARRAY PROCESSOR (LOCKSTEP <span id="raceArrayPeLabel">8</span> PEs)</span>
+                                <span id="raceArrayPct" style="color: var(--neon-emerald);">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+                                <div id="raceArrayBar" style="width: 0%; height: 100%; background: #00ff88; transition: width 0.05s linear;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="racePodium" style="display: none; margin-top: 10px; padding: 6px 12px; background: rgba(0, 255, 136, 0.12); border: 1px solid var(--neon-emerald); border-radius: 4px; font-family: var(--font-mono); font-size: 0.75rem; text-align: center; color: var(--neon-emerald);">
+                        🏆 WINNER: ARRAY PROCESSOR (13.3x FASTER THAN SCALAR)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Vector Register Strip-Mining Inspector -->
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>📦</span> VECTOR REGISTER PIPELINE &amp; STRIP-MINING</h3>
+                    <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-cyan);">MVL = 64 SLOTS</span>
+                </div>
+                <div class="card-subtext" id="stripSummaryText">
+                    Breaking array into chunks of 64 elements to fit hardware vector register file:
+                </div>
+
+                <div class="strip-grid" id="stripChunkGrid"></div>
+
+                <div style="margin-top: 18px;">
+                    <h4 style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase;">
+                        VECTOR REGISTER OCCUPANCY LOG (V0=A, V1=B, V2=RESULT):
+                    </h4>
+                    <div class="cyber-code-block" id="regLogBox" style="margin-top: 8px; max-height: 120px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- Live Vector Register File Dump -->
+                <div style="margin-top: 14px; background: rgba(8, 9, 11, 0.95); border: 1px solid var(--border-neon); border-radius: 6px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; margin-bottom: 8px;">
+                        <span style="color: var(--neon-emerald);">💽 LIVE VECTOR REGISTER FILE (32-BIT LANES):</span>
+                        <span id="regStepBadge" style="color: var(--text-dim);">COMMITTED STEP 1/8</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; text-align: center; font-family: var(--font-mono); font-size: 0.65rem;" id="regFileGrid"></div>
+                </div>
+
+                <div style="margin-top: 14px; background: rgba(18, 4, 8, 0.88); border: 1px solid var(--border-neon); border-radius: 8px; padding: 12px;">
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--neon-amber); font-weight: 700;">
+                        ARCHITECTURAL HARDWARE HIGHLIGHT:
+                    </div>
+                    <div id="archInsightText" style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; line-height: 1.5;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 3: APPLICATION RECOMMENDER -->
+    <!-- ==================================================================== -->
+    <section id="tab-pane-2" class="tab-pane">
+        <div class="layout-2col">
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>💡</span> WORKLOAD PROFILE INGESTION</h3>
+                    <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-cyan);">MODULE 03 // RECOMMENDER SUBSYSTEM</span>
+                </div>
+                <div class="card-subtext">Select production workload to run automated hardware suitability analysis:</div>
+
+                <label style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">SELECT BENCHMARK WORKLOAD:</label>
+                <select id="workloadSelect" onchange="runRecommender()">
+                    <option value="image_filter">Image Filter (2D Convolution / Gaussian Blur / Sobel)</option>
+                    <option value="matrix_multiply">Matrix Multiplication (Dense GEMM, Deep Learning Transformer)</option>
+                    <option value="grid_physics">Grid Physics (Navier-Stokes / Finite Difference PDE Lattice)</option>
+                    <option value="database_query">Database Columnar Scan (WHERE Predicate Filtering & Aggregation)</option>
+                    <option value="linked_list">Linked List Traversal (Dynamic Pointer Chasing & Graph Search)</option>
+                </select>
+
+                <div class="cyber-code-block" id="workloadParamsDisplay" style="margin-bottom: 16px;"></div>
+
+                <div class="card-subtext" style="font-size: 0.8rem;">
+                    The rule-based inference engine evaluates:
+                    <ul style="margin: 6px 0 0 18px; color: var(--text-dim); line-height: 1.6;">
+                        <li>Control Flow Uniformity (Regular vs Divergent)</li>
+                        <li>Dependency Chain (Independent vs Stencil vs Serial Recurrence)</li>
+                        <li>Memory Access Stride (Unit Stride vs Inter-PE Routing vs Pointer Hopping)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="cyber-card">
+                <div class="card-header-hud">
+                    <h3><span>🎯</span> ARCHITECTURAL RECOMMENDATION</h3>
+                    <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--neon-emerald);">OPTIMAL COMPUTE ENGINE</span>
+                </div>
+
+                <div id="recBadgeContainer" style="margin-bottom: 14px;"></div>
+
+                <div style="margin-bottom: 18px;">
+                    <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.8rem;">
+                        <span>SCALAR PROCESSOR SUITABILITY:</span>
+                        <span id="recScoreScalar" style="color: var(--neon-cyan); font-weight: 700;">20/100</span>
+                    </div>
+                    <div class="telemetry-progress-bg">
+                        <div id="recBarScalar" class="telemetry-progress-fill" style="width: 20%; background: #94a3b8;"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.8rem;">
+                        <span>VECTOR PROCESSOR SUITABILITY:</span>
+                        <span id="recScoreVector" style="color: var(--neon-cyan); font-weight: 700;">90/100</span>
+                    </div>
+                    <div class="telemetry-progress-bg">
+                        <div id="recBarVector" class="telemetry-progress-fill" style="width: 90%; background: var(--neon-cyan);"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.8rem;">
+                        <span>ARRAY PROCESSOR SUITABILITY:</span>
+                        <span id="recScoreArray" style="color: var(--neon-emerald); font-weight: 700;">95/100</span>
+                    </div>
+                    <div class="telemetry-progress-bg">
+                        <div id="recBarArray" class="telemetry-progress-fill" style="width: 95%; background: var(--neon-emerald);"></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <h4 style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--neon-cyan); letter-spacing: 1px; text-transform: uppercase;">
+                        WHY THE PROPOSED ENGINE WINS:
+                    </h4>
+                    <p id="recWhyWinText" style="color: var(--text-primary); font-size: 0.88rem; margin-top: 4px; line-height: 1.5;"></p>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <h4 style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--neon-amber); letter-spacing: 1px; text-transform: uppercase;">
+                        WHY ALTERNATIVES STRUGGLE:
+                    </h4>
+                    <p id="recWhyStruggleText" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 4px; line-height: 1.5;"></p>
+                </div>
+
+                <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(0, 242, 254, 0.2); border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                    <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">REAL-WORLD SILICON TARGET:</div>
+                    <div id="recSiliconText" style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--neon-emerald); margin-top: 2px;"></div>
+                </div>
+
+                <!-- Workload Deployment Bridge Button -->
+                <button class="cyber-btn" id="deployToSimBtn" onclick="deployWorkloadToSimulator()" style="width: 100%; justify-content: center; font-size: 0.82rem; padding: 10px 16px;">
+                    <span>🚀</span> DEPLOY WORKLOAD TO SIMULATOR &amp; EXECUTE
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================================== -->
+    <!-- TAB 4: SPEEDUP & AMDAHL'S LAW TELEMETRY -->
+    <!-- ==================================================================== -->
+    <section id="tab-pane-3" class="tab-pane">
+        <div class="cyber-card">
+            <div class="card-header-hud">
+                <h3><span>📈</span> THEORETICAL ACCELERATION TELEMETRY</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="icon-btn active" id="graphModeBtn1" onclick="switchGraphMode('length')">STARTUP AMORTISATION</button>
+                    <button class="icon-btn" id="graphModeBtn2" onclick="switchGraphMode('amdahl')">AMDAHL'S LAW</button>
+                    <button class="icon-btn" id="graphModeBtn3" onclick="switchGraphMode('roofline')">📊 ROOFLINE MODEL</button>
+                </div>
+            </div>
+
+            <!-- Interactive Telemetry Sliders Bar -->
+            <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 14px; background: rgba(3, 7, 18, 0.7); padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(0, 242, 254, 0.2);">
+                <div id="sliderContainer1" style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                    <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--neon-cyan); white-space: nowrap;">
+                        INTERACTIVE LENGTH (n):
+                    </span>
+                    <input type="range" id="graphNSlider" min="1" max="200" value="64" style="margin-bottom:0;" oninput="onGraphNSlider(this.value)">
+                    <span id="graphNVal" style="font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: #ffffff; min-width: 55px;">
+                        n = 64
+                    </span>
+                </div>
+                <div id="sliderContainer2" style="flex: 1; display: none; align-items: center; gap: 12px;">
+                    <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--neon-cyan); white-space: nowrap;">
+                        VECTORIZABLE (f):
+                    </span>
+                    <input type="range" id="graphFSlider" min="0" max="95" value="90" style="margin-bottom:0;" oninput="onGraphFSlider(this.value)">
+                    <span id="graphFVal" style="font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: #ffffff; min-width: 55px;">
+                        f = 90%
+                    </span>
+                </div>
+                <div id="sliderContainer3" style="flex: 1; display: none; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--neon-cyan); white-space: nowrap;">
+                        INTENSITY (FLOPs/B):
+                    </span>
+                    <input type="range" id="graphIntensitySlider" min="0.05" max="8.0" step="0.05" value="1.0" style="margin-bottom:0; flex:1;" oninput="onGraphIntensitySlider(this.value)">
+                    <span id="graphIntensityVal" style="font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: #ffffff; min-width: 65px;">
+                        1.00 FLOP/B
+                    </span>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="cyber-btn" style="padding: 1px 6px; font-size: 0.65rem;" onclick="setRooflinePreset('vecadd')">Vector Add</button>
+                        <button class="cyber-btn" style="padding: 1px 6px; font-size: 0.65rem;" onclick="setRooflinePreset('stencil')">Stencil</button>
+                        <button class="cyber-btn" style="padding: 1px 6px; font-size: 0.65rem;" onclick="setRooflinePreset('fft')">FFT</button>
+                        <button class="cyber-btn" style="padding: 1px 6px; font-size: 0.65rem;" onclick="setRooflinePreset('gemm')">Dense GEMM</button>
+                    </div>
+                </div>
+                <!-- Auto-Sweep Toggle Button -->
+                <button type="button" class="cyber-btn" id="btnGraphAutoSweep" style="padding: 4px 12px; font-size: 0.72rem; border-color: #00f0ff; background: rgba(0, 240, 255, 0.22); display: flex; align-items: center; gap: 6px; white-space: nowrap;" onclick="toggleGraphAutoSweep()">
+                    <span id="autoSweepIcon" style="color: #00f0ff;">⚡</span>
+                    <span id="autoSweepText">AUTO-SWEEP: ON</span>
+                </button>
+                <div style="font-family: var(--font-mono); font-size: 0.78rem; color: #00ff88; white-space: nowrap;" id="graphLiveMetric">
+                    SPEEDUP: 4.21x (76c vs 320c)
+                </div>
+            </div>
+
+            <!-- Interactive Dynamic Canvas Chart -->
+            <canvas id="chartCanvas"></canvas>
+
+            <div class="layout-2col" style="margin-top: 20px;">
+                <div style="background: rgba(14, 15, 18, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 16px;">
+                    <h4 style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--neon-emerald); letter-spacing: 1px;">
+                        INSIGHT 1: STARTUP AMORTISATION CURVE
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.6;">
+                        For small arrays (n &lt; 3), Scalar Processor wins because Vector pipelining startup (12 cycles) is not yet amortized.
+                        As n reaches 64, speedup hits peak (4.21×). Notice the strip-mining sawtooth at n = 65 where a second 12-cycle chunk startup is incurred.
+                    </p>
+                </div>
+
+                <div style="background: rgba(14, 15, 18, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 16px;">
+                    <h4 style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--neon-amber); letter-spacing: 1px;">
+                        INSIGHT 2: AMDAHL'S LAW SERIAL BOTTLENECK
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.6;">
+                        Formula: S(f) = 1 / ((1 - f) + f / P). Even with an infinite supercomputer (P → ∞), if 10% of code is sequential (f = 90%),
+                        total speedup is strictly capped at 1 / 0.10 = 10×. The serial fraction always dominates total execution time.
+                    </p>
+                </div>
+            </div>
+
+            <div style="background: rgba(14, 15, 18, 0.92); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 16px; margin-top: 14px;">
+                <h4 style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--neon-cyan); letter-spacing: 1px;">
+                    INSIGHT 3: ROOFLINE MODEL BOUNDARY
+                </h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.6;">
+                    Attainable GFLOP/s = min(Peak Compute, Arithmetic Intensity × Memory Bandwidth). To the left of the knee (1.5 FLOP/B), performance is bounded by DRAM bandwidth (Memory Bound). To the right, SIMD execution units saturate peak performance (Compute Bound).
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer style="margin-top: 24px; padding: 12px 18px; background: rgba(10, 12, 14, 0.85); border: 1px solid var(--border-neon); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);">
+        <div style="display: flex; gap: 14px; align-items: center;">
+            <span style="color: #ffffff; font-weight: 700;">COMMAND HOTKEYS:</span>
+            <span><kbd style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; color: #fff;">1</kbd>-<kbd style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; color: #fff;">4</kbd> Switch Tabs</span>
+            <span><kbd style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; color: #fff;">SPACE</kbd> Play / Pause</span>
+            <span><kbd style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; color: #fff;">→</kbd> Step</span>
+            <span><kbd style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 3px; color: #fff;">R</kbd> Reset</span>
+        </div>
+        <div style="color: var(--neon-emerald); font-weight: 700;">
+            AVX-512 &bull; 64-BYTE VECTORS &bull; REAL-TIME HUD
+        </div>
+    </footer>
+</main>
+
+<script>
+/* ==========================================================================
+   AUDIO SYNTHESIZER (WEB AUDIO API)
+   ========================================================================== */
+let audioCtx = null;
+let audioEnabled = false;
+let analyserNode = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyserNode = audioCtx.createAnalyser();
+            analyserNode.fftSize = 64;
+            analyserNode.smoothingTimeConstant = 0.8;
+            analyserNode.connect(audioCtx.destination);
+        } catch(e) {}
+    }
+}
+
+function drawOscilloscope() {
+    const canvas = document.getElementById('oscCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.fillStyle = 'rgba(6, 8, 10, 0.4)';
+        ctx.fillRect(0, 0, w, h);
+
+        if (audioEnabled && analyserNode) {
+            const buffer = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteTimeDomainData(buffer);
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#00ff88';
+            ctx.beginPath();
+            const sliceWidth = w / buffer.length;
+            let x = 0;
+            for (let i = 0; i < buffer.length; i++) {
+                const v = buffer[i] / 128.0;
+                const y = (v * h) / 2;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            ctx.stroke();
+        } else {
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.25)';
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+
+            const t = Date.now() * 0.003;
+            const sweepX = (Math.sin(t) * 0.5 + 0.5) * w;
+            ctx.fillStyle = 'rgba(0, 255, 136, 0.5)';
+            ctx.fillRect(sweepX - 2, 0, 4, h);
+        }
+    }
+    requestAnimationFrame(drawOscilloscope);
+}
+
+function toggleAudio() {
+    initAudio();
+    audioEnabled = !audioEnabled;
+    const icon = document.getElementById('audioIcon');
+    const text = document.getElementById('audioStateText');
+    if (audioEnabled) {
+        icon.innerText = '🔊';
+        text.innerText = 'ARMED';
+        text.style.color = 'var(--neon-emerald)';
+        playCyberBeep(880, 'sine', 0.08);
+    } else {
+        icon.innerText = '🔇';
+        text.innerText = 'MUTED';
+        text.style.color = 'var(--text-dim)';
+    }
+}
+
+function playCyberBeep(freq = 600, type = 'sine', duration = 0.08) {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        if (analyserNode) { gain.connect(analyserNode); } else { gain.connect(audioCtx.destination); }
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {}
+}
+
+function playScanTone() {
+    if (!audioEnabled || !audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+        osc.connect(gain);
+        if (analyserNode) { gain.connect(analyserNode); } else { gain.connect(audioCtx.destination); }
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.25);
+    } catch(e) {}
+}
+
+/* ==========================================================================
+   TAB NAVIGATION SYSTEM
+   ========================================================================== */
+function activateTab(index) {
+    playCyberBeep(700, 'sine', 0.04);
+    document.querySelectorAll('.hud-tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+    });
+    document.querySelectorAll('.tab-pane').forEach((pane, i) => {
+        pane.classList.toggle('active', i === index);
+    });
+    if (index === 1) {
+        setTimeout(() => {
+            resizeCanvas();
+            requestAnimationFrame(drawPeCanvas);
+        }, 20);
+    } else if (index === 3) {
+        setTimeout(() => {
+            resizeChartCanvas();
+            requestAnimationFrame(drawSpeedupChart);
+        }, 20);
+    }
+}
+
+/* ==========================================================================
+   MODULE 1: VECTORIZABILITY ANALYZER
+   ========================================================================== */
+const loopDatabase = {
+    1: {
+        title: "Loop 01: SAXPY Linear Combination",
+        code: "for i in range(n):\n    A[i] = 2.5 * B[i] + C[i]",
+        verdict: "Vectorizable",
+        badgeClass: "badge-secure",
+        reason: "Iterations are strictly independent with uniform contiguous unit-stride memory access. Iteration i does not read nor write any memory accessed by iteration j.",
+        hazard: "None. Full SIMD FMA (Fused Multiply-Add) execution across all lanes at peak arithmetic wire speed."
+    },
+    2: {
+        title: "Loop 02: RAW Recurrence / Prefix Scan",
+        code: "A[0] = initial\nfor i in range(1, n):\n    A[i] = A[i-1] + B[i]",
+        verdict: "Not vectorizable",
+        badgeClass: "badge-danger",
+        reason: "True RAW (Read-After-Write) loop-carried dependency: iteration i strictly requires the updated result computed by iteration i-1.",
+        hazard: "Serial data dependency stalls parallel lanes. Standard SIMD lockstep execution stalls; requires parallel prefix tree (Blelloch scan)."
+    },
+    3: {
+        title: "Loop 03: Data-Dependent Branch Predication",
+        code: "for i in range(n):\n    if A[i] > 0:\n        A[i] = A[i] * 2.0\n    else:\n        A[i] = -A[i]",
+        verdict: "Partly vectorizable",
+        badgeClass: "badge-warning",
+        reason: "Control branch needs predication/masking. SIMD hardware evaluates both paths with write-masks.",
+        hazard: "Branch divergence: inactive lanes are masked off, wasting arithmetic compute potential."
+    },
+    4: {
+        title: "Loop 04: Indirect Indexing / Gather",
+        code: "for i in range(n):\n    A[i] = B[indices[i]] * 1.5",
+        verdict: "Partly vectorizable",
+        badgeClass: "badge-warning",
+        reason: "Irregular memory access pattern. Requires hardware Vector Gather instructions.",
+        hazard: "Non-unit stride leads to cache underutilization and memory bank conflicts."
+    },
+    5: {
+        title: "Loop 05: Scalar Accumulation / Reduction Tree",
+        code: "total = 0.0\nfor i in range(n):\n    total += A[i]",
+        verdict: "Partly vectorizable",
+        badgeClass: "badge-warning",
+        reason: "Single scalar accumulator creates a reduction dependency across iterations.",
+        hazard: "Requires horizontal pairwise reduction tree plus scalar post-processing."
+    },
+    6: {
+        title: "Loop 06: 1D Spatial Stencil Smoothing",
+        code: "for i in range(1, n-1):\n    B[i] = 0.5 * (A[i-1] + A[i+1])",
+        verdict: "Vectorizable",
+        badgeClass: "badge-secure",
+        reason: "Independent iterations on target array B. Reads neighboring elements of A without write hazard.",
+        hazard: "Requires unaligned vector loads or register shifts. In Array processors, requires inter-PE routing."
+    }
+};
+
+let currentSimdLaneWidth = 16;
+
+
+let isCustomLoopMode = false;
+let customLoopCode = "for (int i = 0; i < n; i++) {\n    A[i] = 2.5f * B[i] + C[i];\n}";
+
+function toggleLoopInputMode(mode) {
+    isCustomLoopMode = mode === 'custom';
+    const btnPreset = document.getElementById('btnModePreset');
+    const btnCustom = document.getElementById('btnModeCustom');
+    const presetBox = document.getElementById('presetModeContainer');
+    const customBox = document.getElementById('customModeContainer');
+
+    if (btnPreset && btnCustom && presetBox && customBox) {
+        if (isCustomLoopMode) {
+            btnCustom.style.borderColor = 'var(--neon-emerald)';
+            btnCustom.style.background = 'rgba(0, 255, 136, 0.2)';
+            btnPreset.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btnPreset.style.background = 'transparent';
+            presetBox.style.display = 'none';
+            customBox.style.display = 'block';
+            onCustomCodeChange();
+        } else {
+            btnPreset.style.borderColor = 'var(--neon-emerald)';
+            btnPreset.style.background = 'rgba(0, 255, 136, 0.2)';
+            btnCustom.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btnCustom.style.background = 'transparent';
+            presetBox.style.display = 'block';
+            customBox.style.display = 'none';
+            inspectLoop();
+        }
+    }
+    playCyberBeep(700, 'sine', 0.04);
+}
+
+function setCustomCodePreset(type) {
+    const presets = {
+        saxpy: "for (int i = 0; i < n; i++) {\n    A[i] = 2.5f * B[i] + C[i];\n}",
+        raw: "A[0] = 10;\nfor (int i = 1; i < n; i++) {\n    A[i] = A[i-1] + B[i];\n}",
+        branch: "for (int i = 0; i < n; i++) {\n    if (A[i] > 0) {\n        A[i] = A[i] * 2.0f;\n    } else {\n        A[i] = -A[i];\n    }\n}",
+        reduction: "float total = 0.0f;\nfor (int i = 0; i < n; i++) {\n    total += A[i];\n}",
+        gather: "for (int i = 0; i < n; i++) {\n    A[i] = B[indices[i]] * 1.5f;\n}"
+    };
+    customLoopCode = presets[type] || presets.saxpy;
+    const input = document.getElementById('customCodeInput');
+    if (input) input.value = customLoopCode;
+    onCustomCodeChange();
+    playCyberBeep(850, 'triangle', 0.05);
+}
+
+function onCustomCodeChange() {
+    const input = document.getElementById('customCodeInput');
+    if (input) customLoopCode = input.value;
+    document.getElementById('codeDisplayArea').innerText = customLoopCode;
+
+    // Reset right panel to standby
+    document.getElementById('scanStandbyView').style.display = 'block';
+    document.getElementById('scanProgressArea').style.display = 'none';
+    document.getElementById('scanResultView').style.display = 'none';
+
+    const statusTag = document.getElementById('scanStatusTag');
+    if (statusTag) {
+        statusTag.innerText = "CUSTOM KERNEL // AWAITING AUDIT";
+        statusTag.style.color = "var(--neon-amber)";
+    }
+
+    const btn = document.getElementById('deepScanBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "<span>⚡</span> RUN DEEP SECURITY SCAN";
+    }
+
+    // Reset lane grid to idle
+    const grid = document.getElementById('simdLaneGrid');
+    if (grid) {
+        grid.innerHTML = '';
+        for (let p = 0; p < currentSimdLaneWidth; p++) {
+            const box = document.createElement('div');
+            box.className = 'lane-box';
+            box.innerHTML = "<strong>L" + p + "</strong><br><span style='color:var(--text-dim)'>IDLE</span><br>-";
+            grid.appendChild(box);
+        }
+    }
+    const badge = document.getElementById('laneStatusBadge');
+    if (badge) {
+        badge.innerText = "LANES (0-" + (currentSimdLaneWidth - 1) + "): STANDBY // BUFFER LOADED";
+        badge.style.color = "var(--neon-emerald)";
+    }
+}
+
+function analyzeCustomKernel(code, laneWidth) {
+    const clean = code.toLowerCase();
+    const hasRAW = clean.includes('i-1') || clean.includes('i - 1') || clean.includes('a[i-1]');
+    const hasBranch = clean.includes('if (') || clean.includes('if(');
+    const hasGather = clean.includes('[indices[') || clean.includes('[idx[') || clean.includes('indices') || clean.includes('idx');
+    const hasReduction = clean.includes('+=') || clean.includes('sum') || clean.includes('total');
+
+    if (hasRAW) {
+        return {
+            verdict: "Not vectorizable",
+            badgeClass: "badge-danger",
+            reason: "True RAW (Read-After-Write) loop-carried dependency detected. Iteration i strictly requires value computed in iteration i-1.",
+            hazard: "Serial data dependency stalls parallel lanes. Lockstep SIMD execution causes pipeline hazard stalls.",
+            laneConfig: {
+                special: (i) => i === 0 ? { name: "EXEC", sub: "SEED", cls: "active" } : { name: "BLOCKED", sub: "RAW STALL", cls: "hazard" },
+                status: "HAZARD DETECTED: SERIAL RECURRENCE STALLS LANES 1-" + (laneWidth - 1)
+            }
+        };
+    }
+    if (hasGather) {
+        return {
+            verdict: "Partly vectorizable",
+            badgeClass: "badge-warning",
+            reason: "Indirect memory indexing detected. Elements are addressed non-contiguously via index pointer array.",
+            hazard: "Non-unit memory stride causes cache line thrashing and multi-cycle hardware gather stalls.",
+            laneConfig: {
+                special: (i) => ({ name: "GATHER", sub: "idx[" + i + "]", cls: "masked" }),
+                status: "NON-UNIT STRIDE: " + laneWidth + "-WAY DRAM BANK SERIALIZATION"
+            }
+        };
+    }
+    if (hasBranch) {
+        return {
+            verdict: "Partly vectorizable",
+            badgeClass: "badge-warning",
+            reason: "Data-dependent control flow detected. Conditional evaluation requires hardware write-masking.",
+            hazard: "Control branch divergence forces inactive lanes to be masked off, reducing SIMD compute efficiency.",
+            laneConfig: {
+                special: (i) => i % 2 === 0 ? { name: "EXEC", sub: "TRUE", cls: "active" } : { name: "MASKED", sub: "FALSE", cls: "masked" },
+                status: "PREDICATION ACTIVE: DIVERGENT LANES MASKED OFF"
+            }
+        };
+    }
+    if (hasReduction) {
+        return {
+            verdict: "Partly vectorizable",
+            badgeClass: "badge-warning",
+            reason: "Scalar accumulation detected across loop iterations. Accumulator variable creates reduction dependency.",
+            hazard: "Requires horizontal pairwise tree reduction across SIMD vector registers followed by scalar extraction.",
+            laneConfig: {
+                special: (i) => ({ name: "L" + i, sub: "PAIRWISE +", cls: "active" }),
+                status: "TREE REDUCTION: " + Math.round(Math.log2(laneWidth)) + "-STAGE LOG2(" + laneWidth + ") PAIRWISE ADD"
+            }
+        };
+    }
+
+    return {
+        verdict: "Vectorizable",
+        badgeClass: "badge-secure",
+        reason: "Loop iterations are strictly independent with uniform contiguous unit-stride memory access.",
+        hazard: "None. Full SIMD FMA (Fused Multiply-Add) execution across all lanes at peak arithmetic wire speed.",
+        laneConfig: {
+            name: "EXEC",
+            sub: "LOCKSTEP",
+            cls: "active",
+            status: "ALL " + laneWidth + " LANES COMPUTE IN LOCKSTEP (100% UTILIZATION)"
+        }
+    };
+}
+
+function setSimdLaneCount(count) {
+    currentSimdLaneWidth = count;
+    const btn8 = document.getElementById('btnLanes8');
+    const btn16 = document.getElementById('btnLanes16');
+    const grid = document.getElementById('simdLaneGrid');
+    
+    if (btn8 && btn16) {
+        if (count === 8) {
+            btn8.style.borderColor = 'var(--neon-cyan)';
+            btn8.style.background = 'rgba(56, 189, 248, 0.2)';
+            btn16.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+            btn16.style.background = 'transparent';
+        } else {
+            btn16.style.borderColor = 'var(--neon-cyan)';
+            btn16.style.background = 'rgba(56, 189, 248, 0.2)';
+            btn8.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+            btn8.style.background = 'transparent';
+        }
+    }
+    
+    if (grid) {
+        if (count === 16) {
+            grid.classList.add('lanes-16');
+            grid.style.gridTemplateColumns = 'repeat(16, 1fr)';
+        } else {
+            grid.classList.remove('lanes-16');
+            grid.style.gridTemplateColumns = 'repeat(8, 1fr)';
+        }
+    }
+    
+    const loopId = document.getElementById('loopSelect') ? document.getElementById('loopSelect').value : 1;
+    const isScanned = document.getElementById('scanResultView') && document.getElementById('scanResultView').style.display !== 'none';
+    updateSimdLaneGrid(loopId, isScanned);
+    playCyberBeep(700, 'sine', 0.04);
+}
+
+function updateSimdLaneGrid(loopId, isScanned) {
+    const grid = document.getElementById('simdLaneGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const badge = document.getElementById('laneStatusBadge');
+
+    const laneConfigs = {
+        1: { 
+            name: "EXEC", 
+            sub: "2.5*B+C", 
+            cls: "active", 
+            status: `ALL ${currentSimdLaneWidth} LANES COMPUTE IN LOCKSTEP (100% UTILIZATION)` 
+        },
+        2: { 
+            special: (i) => i === 0 
+                ? { name: "EXEC", sub: "A[0]=10", cls: "active" } 
+                : { name: "BLOCKED", sub: `NEEDS A[${i-1}]`, cls: "hazard" },
+            status: `HAZARD DETECTED: SERIAL DEPENDENCY STALLS LANES 1-${currentSimdLaneWidth - 1}` 
+        },
+        3: {
+            special: (i) => [0, 1, 3, 4, 8, 9, 11, 12].includes(i)
+                ? { name: "EXEC", sub: "2.0 * A", cls: "active" }
+                : { name: "MASKED", sub: "-A[i] write", cls: "masked" },
+            status: "PREDICATION ACTIVE: DIVERGENT LANES MASKED OFF"
+        },
+        4: { 
+            special: (i) => ({ name: "GATHER", sub: `B[${i}]`, cls: "masked" }), 
+            status: `NON-UNIT STRIDE: ${currentSimdLaneWidth}-WAY DRAM BANK CONFLICT STALL` 
+        },
+        5: { 
+            special: (i) => ({ name: `L${i}`, sub: `PAIRWISE +`, cls: "active" }),
+            status: `TREE REDUCTION: ${Math.round(Math.log2(currentSimdLaneWidth))}-STAGE LOG2(${currentSimdLaneWidth}) PAIRWISE ADD`
+        },
+        6: { 
+            name: "STENCIL", 
+            sub: "A[i±1]", 
+            cls: "active", 
+            status: `PARALLEL ${currentSimdLaneWidth}-LANE STENCIL OUTPUT TO TARGET ARRAY B` 
+        }
+    };
+
+    const cfg = laneConfigs[loopId] || laneConfigs[1];
+
+    for (let p = 0; p < currentSimdLaneWidth; p++) {
+        const box = document.createElement('div');
+        if (!isScanned) {
+            box.className = 'lane-box';
+            box.innerHTML = `<strong>L${p}</strong><br><span style="color:var(--text-dim)">IDLE</span><br>-`;
+        } else {
+            let item = cfg.special ? cfg.special(p) : cfg;
+            box.className = `lane-box ${item.cls} lane-animated`;
+            box.style.animationDelay = `${p * 0.03}s`;
+            box.style.cursor = 'pointer';
+            box.title = `Click to inspect Lane ${p} micro-telemetry`;
+            box.onclick = () => inspectLane(loopId, p);
+            box.innerHTML = `<strong>L${p}</strong><br><span>${item.name}</span><br><span style="font-size:0.62rem">${item.sub}</span>`;
+        }
+        grid.appendChild(box);
+    }
+
+    if (badge) {
+        badge.innerText = isScanned ? cfg.status : `LANES (0-${currentSimdLaneWidth-1}): STANDBY // BUFFER LOADED`;
+        badge.style.color = isScanned 
+            ? (loopId == 2 ? "var(--neon-amber)" : (loopId == 3 || loopId == 4 ? "var(--neon-amber)" : "var(--neon-emerald)"))
+            : "var(--neon-emerald)";
+    }
+}
+
+function inspectLane(loopId, p) {
+    playCyberBeep(580 + (p % 8) * 45, 'triangle', 0.06);
+    const badge = document.getElementById('laneStatusBadge');
+    if (!badge) return;
+
+    // Pulse highlight selected lane box
+    const boxes = document.querySelectorAll('.lane-box');
+    boxes.forEach((b, idx) => {
+        if (idx === p) {
+            b.style.boxShadow = '0 0 18px #ffffff';
+            b.style.borderColor = '#ffffff';
+            setTimeout(() => {
+                b.style.boxShadow = '';
+                b.style.borderColor = '';
+            }, 600);
+        }
+    });
+
+    const msgs = {
+        1: `LANE ${p}: Contiguous Lockstep Execution // C[${p}] = 2.5 * B[${p}] + C[${p}]. Zero dependency hazards.`,
+        2: p === 0 
+            ? `LANE 0: Seeds recurrence A[0] = 10. Memory write committed.` 
+            : `LANE ${p}: CRITICAL RAW HAZARD // Stalled waiting for updated A[${p-1}] from Lane ${p-1}!`,
+        3: [0, 1, 3, 4, 8, 9, 11, 12].includes(p)
+            ? `LANE ${p}: Predicate TRUE (A[${p}] > 0) -> Computes 2.0 * A[${p}] with write-back active.`
+            : `LANE ${p}: Predicate FALSE (A[${p}] <= 0) -> MASKED OFF! Execution slot wasted to preserve correctness.`,
+        4: `LANE ${p}: Non-unit stride Gather // Fetching B[idx[${p}]]. Multi-cycle DRAM cache bank serialization.`,
+        5: `LANE ${p}: Pairwise Logarithmic Reduction // Forwarding intermediate partial sum across horizontal butterfly tree.`,
+        6: `LANE ${p}: Spatial Stencil // Computes 0.5 * (A[${p}-1] + A[${p}+1]) into output array B[${p}].`
+    };
+
+    badge.innerText = msgs[loopId] || `LANE ${p}: Active SIMD lane operand.`;
+    badge.style.color = (loopId == 2 && p > 0) ? "var(--neon-amber)" : "var(--neon-emerald)";
+}
+
+function inspectLoop() {
+    const id = document.getElementById('loopSelect').value;
+    const data = loopDatabase[id];
+    document.getElementById('codeDisplayArea').innerText = data.code;
+
+    // Reset right-hand panel to Standby until Deep Security Scan is triggered
+    document.getElementById('scanStandbyView').style.display = 'block';
+    document.getElementById('scanProgressArea').style.display = 'none';
+    document.getElementById('scanResultView').style.display = 'none';
+
+    const statusTag = document.getElementById('scanStatusTag');
+    statusTag.innerText = "STANDBY // AWAITING AUDIT";
+    statusTag.style.color = "var(--neon-amber)";
+
+    const btn = document.getElementById('deepScanBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "<span>⚡</span> RUN DEEP SECURITY SCAN";
+    }
+
+    // Reset SIMD lanes to idle standby
+    updateSimdLaneGrid(id, false);
+
+    playCyberBeep(520, 'sine', 0.04);
+}
+
+function triggerLaserScan() {
+    const id = document.getElementById('loopSelect').value;
+    const data = isCustomLoopMode 
+        ? analyzeCustomKernel(customLoopCode, currentSimdLaneWidth)
+        : loopDatabase[id];
+    const box = document.getElementById('codeInspectionBox');
+    const btn = document.getElementById('deepScanBtn');
+
+    // Button scanning state
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "<span>⏳</span> AUDITING CODE STREAM...";
+    }
+
+    // Code laser beam activation
+    box.classList.add('scanning');
+    playScanTone();
+
+    // Switch to progress bar animation
+    document.getElementById('scanStandbyView').style.display = 'none';
+    document.getElementById('scanResultView').style.display = 'none';
+    const progressArea = document.getElementById('scanProgressArea');
+    progressArea.style.display = 'block';
+
+    const fillBar = document.getElementById('scanFillBar');
+    if (fillBar) {
+        fillBar.style.width = '0%';
+        setTimeout(() => { fillBar.style.width = '100%'; }, 40);
+    }
+
+    const statusTag = document.getElementById('scanStatusTag');
+    statusTag.innerText = "AUDITING KERNEL STREAM...";
+    statusTag.style.color = "var(--neon-cyan)";
+
+    // Reveal result after simulated cybernetic audit
+    setTimeout(() => {
+        box.classList.remove('scanning');
+        progressArea.style.display = 'none';
+
+        // Animate SIMD hardware lanes
+        updateSimdLaneGrid(id, true);
+
+        // Populate verified verdict data
+        document.getElementById('threatBadgeSlot').innerHTML = `
+            <div class="status-badge ${data.badgeClass}">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:currentColor;"></span>
+                VERDICT: ${data.verdict.toUpperCase()}
+            </div>
+        `;
+        document.getElementById('loopReasonText').innerText = data.reason;
+        document.getElementById('loopHazardText').innerText = data.hazard;
+
+        // Animate result reveal
+        const resView = document.getElementById('scanResultView');
+        resView.style.display = 'block';
+        resView.classList.remove('result-reveal');
+        void resView.offsetWidth; // Reflow
+        resView.classList.add('result-reveal');
+
+        // Status update
+        if (data.verdict === "Vectorizable") {
+            statusTag.innerText = "AUDIT COMPLETE // SHIELD ACTIVE";
+            statusTag.style.color = "var(--neon-emerald)";
+            playCyberBeep(1040, 'triangle', 0.15);
+        } else if (data.verdict === "Not vectorizable") {
+            statusTag.innerText = "AUDIT COMPLETE // CRITICAL HAZARD DETECTED";
+            statusTag.style.color = "var(--neon-amber)";
+            playCyberBeep(320, 'sawtooth', 0.22);
+        } else {
+            statusTag.innerText = "AUDIT COMPLETE // MASKING OVERHEAD DETECTED";
+            statusTag.style.color = "var(--neon-amber)";
+            playCyberBeep(740, 'sine', 0.12);
+        }
+
+        // Reset button
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = "<span>⚡</span> RE-RUN SECURITY SCAN";
+        }
+    }, 950);
+}
+
+/* ==========================================================================
+   MODULE 2: THREE-WAY SIMULATOR & CANVAS PE ANIMATION
+   ========================================================================== */
+let simEngine = {
+    isPlaying: false,
+    stepIndex: 0,
+    totalSteps: 8,
+    peCount: 8,
+    n: 64,
+    isStencil: false,
+    topology: '1d_bus', // '1d_bus' or '2d_mesh'
+    packetProgress: 0,
+    currentCycles: 0,
+    targetScalarCycles: 320,
+    targetVectorCycles: 76,
+    targetArrayCycles: 24,
+    speed: 2,
+    subPhase: 0
+};
+
+const simCanvas = document.getElementById('simCanvas');
+const ctx = simCanvas ? simCanvas.getContext('2d') : null;
+
+
+function setSimTopology(topo) {
+    simEngine.topology = topo;
+    const btn1D = document.getElementById('btnTopo1D');
+    const btn2D = document.getElementById('btnTopo2D');
+    if (btn1D && btn2D) {
+        if (topo === '2d_mesh') {
+            btn2D.style.borderColor = 'var(--neon-emerald)';
+            btn2D.style.background = 'rgba(0, 255, 136, 0.2)';
+            btn1D.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btn1D.style.background = 'transparent';
+        } else {
+            btn1D.style.borderColor = 'var(--neon-emerald)';
+            btn1D.style.background = 'rgba(0, 255, 136, 0.2)';
+            btn2D.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btn2D.style.background = 'transparent';
+        }
+    }
+    resizeCanvas();
+    drawPeCanvas();
+    playCyberBeep(750, 'sine', 0.04);
+}
+
+function onScrubberChange(val) {
+    const cycle = parseInt(val) || 0;
+    simEngine.currentCycles = cycle;
+    const progressFrac = simEngine.targetArrayCycles > 0 ? cycle / simEngine.targetArrayCycles : 0;
+    simEngine.stepIndex = Math.min(simEngine.totalSteps - 1, Math.floor(progressFrac * simEngine.totalSteps));
+
+    const scrubberLabel = document.getElementById('scrubberLabel');
+    if (scrubberLabel) {
+        scrubberLabel.innerText = "CYCLE " + cycle + " / " + simEngine.targetArrayCycles;
+    }
+    document.getElementById('statArrayCycles').innerText = cycle + " / " + simEngine.targetArrayCycles;
+    const hudClock = document.getElementById('hudClock');
+    if (hudClock) hudClock.innerText = "CYCLES: " + String(cycle).padStart(4, '0') + " | " + simEngine.peCount + " LANES";
+
+    updateActiveStripChunk();
+    updateRegisterFileDump();
+    drawPeCanvas();
+}
+
+function updateRegisterFileDump() {
+    const grid = document.getElementById('regFileGrid');
+    const badge = document.getElementById('regStepBadge');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (badge) {
+        badge.innerText = "COMMITTED STEP " + (simEngine.stepIndex + 1) + "/" + simEngine.totalSteps;
+    }
+
+    for (let p = 0; p < 8; p++) {
+        const elemIdx = simEngine.stepIndex * simEngine.peCount + p;
+        const active = elemIdx < simEngine.n;
+        const v0 = active ? elemIdx + 1 : 0;
+        const v1 = active ? (simEngine.isStencil ? 1 : elemIdx + 101) : 0;
+        const v2 = active ? (simEngine.isStencil ? ((elemIdx - 1 + 10) + (elemIdx + 1 + 10)) : (v0 + v1)) : 0;
+
+        const cell = document.createElement('div');
+        cell.style.background = active ? 'rgba(0, 255, 136, 0.12)' : 'rgba(255, 255, 255, 0.04)';
+        cell.style.border = "1px solid " + (active ? 'var(--neon-emerald)' : 'rgba(255, 255, 255, 0.1)');
+        cell.style.borderRadius = '4px';
+        cell.style.padding = '4px 2px';
+
+        cell.innerHTML = "<div style='color:var(--text-dim);font-weight:700'>L" + p + "</div>" +
+            "<div style='color:" + (active ? 'var(--neon-emerald)' : 'var(--text-dim)') + ";margin-top:2px'>V0:" + v0 + "</div>" +
+            "<div style='color:" + (active ? 'var(--neon-cyan)' : 'var(--text-dim)') + "'>V1:" + v1 + "</div>" +
+            "<div style='color:" + (active ? '#ffffff' : 'var(--text-dim)') + ";font-weight:700'>V2:" + v2 + "</div>";
+        grid.appendChild(cell);
+    }
+}
+
+let raceAnimId = null;
+function startHardwareRace() {
+    if (raceAnimId) cancelAnimationFrame(raceAnimId);
+    const btn = document.getElementById('startRaceBtn');
+    if (btn) btn.disabled = true;
+    const podium = document.getElementById('racePodium');
+    if (podium) podium.style.display = 'none';
+
+    let cyc = 0;
+    const n = simEngine.n;
+    const pe = simEngine.peCount;
+    const isStencil = simEngine.isStencil;
+
+    const scalarTotal = isStencil ? 5 * (n - 2) : 5 * n;
+    const numChunks = Math.ceil((isStencil ? n - 2 : n) / 64);
+    const vectorTotal = isStencil ? (numChunks * 14 + (n - 2)) : (numChunks * 12 + n);
+    const arrayTotal = simEngine.targetArrayCycles;
+    const maxCyc = Math.max(scalarTotal, vectorTotal, arrayTotal);
+
+    function tick() {
+        cyc += 2;
+        const sProg = Math.min(100, (cyc / scalarTotal) * 100);
+        const vProg = Math.min(100, (cyc / vectorTotal) * 100);
+        const aProg = Math.min(100, (cyc / arrayTotal) * 100);
+
+        const sBar = document.getElementById('raceScalarBar');
+        const sPct = document.getElementById('raceScalarPct');
+        if (sBar) sBar.style.width = sProg + "%";
+        if (sPct) sPct.innerText = Math.round(sProg) + "% // " + scalarTotal + "c";
+
+        const vBar = document.getElementById('raceVectorBar');
+        const vPct = document.getElementById('raceVectorPct');
+        if (vBar) vBar.style.width = vProg + "%";
+        if (vPct) vPct.innerText = Math.round(vProg) + "% // " + vectorTotal + "c";
+
+        const aBar = document.getElementById('raceArrayBar');
+        const aPct = document.getElementById('raceArrayPct');
+        if (aBar) aBar.style.width = aProg + "%";
+        if (aPct) aPct.innerText = Math.round(aProg) + "% // " + arrayTotal + "c";
+
+        const allDone = sProg >= 100 && vProg >= 100 && aProg >= 100;
+        if (!allDone && cyc < maxCyc + 20) {
+            raceAnimId = requestAnimationFrame(tick);
+        } else {
+            if (btn) btn.disabled = false;
+            if (podium) {
+                podium.style.display = 'block';
+                const spd = (scalarTotal / arrayTotal).toFixed(1);
+                podium.innerHTML = "🏆 WINNER: ARRAY PROCESSOR (" + spd + "x FASTER THAN SCALAR BASELINE)";
+            }
+            playCyberBeep(1200, 'triangle', 0.25);
+        }
+    }
+    raceAnimId = requestAnimationFrame(tick);
+    playCyberBeep(600, 'sine', 0.08);
+}
+
+function resizeCanvas() {
+    if (!simCanvas || !ctx) return;
+    const rect = simCanvas.getBoundingClientRect();
+    if (!rect.width || rect.width <= 0) return;
+    const isLargePE = simEngine.peCount > 8;
+    const is2DMesh = simEngine.topology === '2d_mesh' && simEngine.peCount === 16;
+    const h = is2DMesh ? 380 : (isLargePE ? 360 : 300);
+    const dpr = window.devicePixelRatio || 1;
+    simCanvas.width = Math.round(rect.width * dpr);
+    simCanvas.height = Math.round(h * dpr);
+    simCanvas.style.height = `${h}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function runSimEngine() {
+    const isStencil = document.getElementById('simModeSelect').value === 'stencil';
+    const n = parseInt(document.getElementById('simNInput').value) || 64;
+    const peCount = parseInt(document.getElementById('simPeCountSelect').value) || 8;
+
+    simEngine.isStencil = isStencil;
+    simEngine.n = n;
+    simEngine.peCount = peCount;
+    simEngine.totalSteps = Math.ceil(n / peCount);
+    simEngine.stepIndex = 0;
+    simEngine.currentCycles = 0;
+    simEngine.subPhase = 0;
+    simEngine.packetProgress = 0;
+
+    resizeCanvas();
+
+    // Formulas
+    const scalarCycles = isStencil ? 5 * (n - 2) : 5 * n;
+    const numChunks = Math.ceil((isStencil ? n - 2 : n) / 64);
+    const vectorCycles = isStencil ? (numChunks * 14 + (n - 2)) : (numChunks * 12 + n);
+    const arrayCycles = isStencil ? simEngine.totalSteps * 9 : simEngine.totalSteps * 3;
+
+    simEngine.targetScalarCycles = scalarCycles;
+    simEngine.targetVectorCycles = vectorCycles;
+    simEngine.targetArrayCycles = arrayCycles;
+
+    // Animate stats
+    document.getElementById('statScalarCycles').innerText = scalarCycles;
+    document.getElementById('statVectorCycles').innerText = vectorCycles;
+    document.getElementById('statArrayCycles').innerText = "0 / " + arrayCycles;
+    document.getElementById('statVectorSpeedup').innerText = (scalarCycles / vectorCycles).toFixed(2) + "x ACCELERATION";
+    document.getElementById('statArraySpeedup').innerText = (scalarCycles / arrayCycles).toFixed(2) + "x ACCELERATION";
+
+    const hudClock = document.getElementById('hudClock');
+    if (hudClock) hudClock.innerText = `CYCLES: 0000 | ${peCount} LANES`;
+
+    // Summary texts
+    document.getElementById('peGridSummaryText').innerText = isStencil 
+        ? `STENCIL ACTIVE: Array Processor executes ${simEngine.totalSteps} lockstep steps. Each step incurs a 6-cycle inter-PE neighbor communication penalty!`
+        : `VECTOR ADD ACTIVE: Array Processor executes ${simEngine.totalSteps} lockstep steps with zero neighbor communication.`;
+
+    document.getElementById('archInsightText').innerText = isStencil
+        ? "CRITICAL DIFFERENTIATOR: While Array Processors spike in latency due to PE-to-PE packet routing across the mesh bus, Vector Processors handle stencils via internal pipelined register shifts without bus stalls."
+        : "For embarrassingly parallel loops, Array Processors scale linearly with PE count, while Vector Processors amortize startup latency over long vector chunks.";
+
+    // Update 2D Mesh button visibility
+    const btnTopo2D = document.getElementById('btnTopo2D');
+    if (btnTopo2D) {
+        if (peCount === 16) {
+            btnTopo2D.style.display = 'inline-block';
+        } else {
+            btnTopo2D.style.display = 'none';
+            simEngine.topology = '1d_bus';
+            const btn1D = document.getElementById('btnTopo1D');
+            if (btn1D) {
+                btn1D.style.borderColor = 'var(--neon-emerald)';
+                btn1D.style.background = 'rgba(0, 255, 136, 0.2)';
+            }
+        }
+    }
+
+    // Scrubber update
+    const scrubber = document.getElementById('cycleScrubber');
+    const scrubberLabel = document.getElementById('scrubberLabel');
+    if (scrubber) {
+        scrubber.max = arrayCycles;
+        scrubber.value = 0;
+    }
+    if (scrubberLabel) {
+        scrubberLabel.innerText = "CYCLE 0 / " + arrayCycles;
+    }
+
+    // Race labels update
+    const racePeLabel = document.getElementById('racePeLabel');
+    const raceArrayPeLabel = document.getElementById('raceArrayPeLabel');
+    if (racePeLabel) racePeLabel.innerText = peCount;
+    if (raceArrayPeLabel) raceArrayPeLabel.innerText = peCount;
+
+    // Render strip-mining chunks
+    renderStripMiningChunks(n, numChunks);
+    updateRegisterFileDump();
+
+    const playBtn = document.getElementById('playBtn');
+    if (playBtn) {
+        playBtn.innerText = "▶ PLAY";
+        playBtn.classList.remove('active');
+    }
+    simEngine.isPlaying = false;
+
+    playCyberBeep(640, 'sine', 0.05);
+    drawPeCanvas();
+}
+
+function renderStripMiningChunks(n, numChunks) {
+    const grid = document.getElementById('stripChunkGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    let remaining = n;
+    let idx = 0;
+    let logLines = [];
+
+    while (remaining > 0) {
+        let chunkLen = Math.min(64, remaining);
+        let start = idx * 64;
+        let end = start + chunkLen;
+        let cycles = 12 + chunkLen;
+
+        const box = document.createElement('div');
+        box.id = `stripChunk_${idx}`;
+        box.className = `strip-chunk-box ${idx === 0 ? 'highlight active-running' : ''}`;
+        box.innerHTML = `
+            <div class="chunk-fill" style="height: ${(chunkLen / 64) * 100}%;"></div>
+            <div style="color: var(--neon-cyan); font-weight: 700;">CHUNK 0${idx}</div>
+            <div style="font-size:0.72rem; color:var(--text-dim);">[${start}:${end}] (${chunkLen} slots)</div>
+            <div style="font-size:0.75rem; margin-top:4px;">⏱ ${cycles} cycles</div>
+        `;
+        grid.appendChild(box);
+
+        logLines.push(`[Chunk ${idx}] Reg V0=A[${start}:${start+4}], V1=B[${start}:${start+4}] -> V2=C[${start}:${start+4}] (${cycles} cyc)`);
+        remaining -= chunkLen;
+        idx++;
+    }
+
+    const regLog = document.getElementById('regLogBox');
+    if (regLog) regLog.innerText = logLines.join('\n');
+}
+
+function updateActiveStripChunk() {
+    const currentElem = simEngine.stepIndex * simEngine.peCount;
+    const activeChunkIdx = Math.floor(currentElem / 64);
+    document.querySelectorAll('.strip-chunk-box').forEach((box, i) => {
+        if (i === activeChunkIdx) {
+            box.classList.add('highlight', 'active-running');
+        } else {
+            box.classList.remove('active-running');
+        }
+    });
+}
+
+function drawPeCanvas() {
+    if (!ctx || !simCanvas) return;
+    const rect = simCanvas.getBoundingClientRect();
+    if (!rect.width || rect.width <= 0) return;
+    const w = rect.width;
+    const isLargePE = simEngine.peCount > 8;
+    const is2DMesh = simEngine.topology === '2d_mesh' && simEngine.peCount === 16;
+    const h = is2DMesh ? 380 : (isLargePE ? 360 : 300);
+    const dpr = window.devicePixelRatio || 1;
+
+    if (simCanvas.width !== Math.round(w * dpr) || simCanvas.height !== Math.round(h * dpr)) {
+        simCanvas.width = Math.round(w * dpr);
+        simCanvas.height = Math.round(h * dpr);
+        simCanvas.style.height = h + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    ctx.clearRect(0, 0, w, h);
+
+    const isStencil = simEngine.isStencil;
+    const peCount = simEngine.peCount;
+    const cuX = w / 2;
+    const cuY = 46;
+
+    // --- STEP PROGRESS BANNER AT TOP ---
+    ctx.font = "bold 11px 'JetBrains Mono', monospace";
+    ctx.fillStyle = isStencil ? "#fbbf24" : "#00ff88";
+    ctx.textAlign = "left";
+    const statusText = simEngine.isPlaying 
+        ? "▶ RUNNING: STEP " + (simEngine.stepIndex + 1) + " OF " + simEngine.totalSteps 
+        : "⏸ STEP " + (simEngine.stepIndex + 1) + " OF " + simEngine.totalSteps;
+    ctx.fillText(statusText, 20, 22);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#00ff88";
+    ctx.fillText("CYCLE PROGRESS: " + simEngine.currentCycles + " / " + simEngine.targetArrayCycles + " CYCLES", w - 20, 22);
+
+    // --- DRAW CONTROL UNIT (CU) ---
+    ctx.fillStyle = "rgba(14, 15, 18, 0.96)";
+    ctx.strokeStyle = isStencil ? "#fbbf24" : "#00ff88";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cuX - 110, cuY - 20, 220, 38, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = "bold 10.5px 'JetBrains Mono', monospace";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.fillText("CONTROL UNIT (CU)", cuX, cuY - 2);
+
+    ctx.font = "9px 'JetBrains Mono', monospace";
+    ctx.fillStyle = isStencil ? "#fbbf24" : "#00ff88";
+    ctx.fillText(isStencil ? "BROADCAST: 1D STENCIL OPERANDS" : "BROADCAST: C[i] = A[i] + B[i]", cuX, cuY + 12);
+
+    if (!is2DMesh) {
+        // ==========================================
+        // 1D LINEAR BUS TOPOLOGY
+        // ==========================================
+        const marginX = isLargePE ? 24 : 50;
+        const peSpacing = (w - marginX * 2) / (peCount - 1);
+        const peRadius = isLargePE 
+            ? Math.max(10, Math.min(14, peSpacing * 0.35)) 
+            : Math.max(14, Math.min(22, peSpacing * 0.40));
+        const peY = h - (isLargePE ? 80 : 65);
+
+        // --- BUS LINES FROM CU TO PEs ---
+        for (let p = 0; p < peCount; p++) {
+            const peX = marginX + p * peSpacing;
+            ctx.beginPath();
+            ctx.strokeStyle = isStencil ? "rgba(245, 158, 11, 0.25)" : "rgba(0, 255, 136, 0.25)";
+            ctx.setLineDash([3, 3]);
+            ctx.moveTo(cuX, cuY + 18);
+            ctx.lineTo(peX, peY - peRadius - 6);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // --- INTER-PE HORIZONTAL INTERCONNECTION BUS ---
+        ctx.beginPath();
+        ctx.strokeStyle = isStencil ? "rgba(245, 158, 11, 0.7)" : "rgba(0, 255, 136, 0.5)";
+        ctx.lineWidth = isStencil ? 3 : 1.5;
+        ctx.moveTo(marginX, peY);
+        ctx.lineTo(marginX + (peCount - 1) * peSpacing, peY);
+        ctx.stroke();
+
+        // Horizontal Bus Annotation
+        ctx.font = isLargePE ? "bold 8px 'JetBrains Mono', monospace" : "bold 9px 'JetBrains Mono', monospace";
+        ctx.fillStyle = isStencil ? "#fbbf24" : "#00ff88";
+        ctx.textAlign = "center";
+        ctx.fillText(
+            isStencil
+                ? (isLargePE ? "⚡ 16-PE INTER-NEIGHBOR ROUTING BUS (+6 CYCLES/STEP LATENCY)" : "⚡ INTER-PE NEIGHBOR ROUTING BUS (+6 CYCLES/STEP LATENCY PENALTY)")
+                : (isLargePE ? "⚡ 16-PE SYNCHRONOUS BROADCAST BUS (ZERO INTER-PE LATENCY)" : "⚡ CU SYNCHRONOUS BROADCAST BUS (ZERO INTER-PE LATENCY)"),
+            w / 2,
+            peY - peRadius - 16
+        );
+
+        // --- DRAW INDIVIDUAL PE NODES WITH LIVE COMPUTED VALUES ---
+        for (let p = 0; p < peCount; p++) {
+            const peX = marginX + p * peSpacing;
+            const elemIdx = simEngine.stepIndex * peCount + p;
+            const isActive = elemIdx < simEngine.n;
+
+            // PE Circle
+            ctx.beginPath();
+            ctx.arc(peX, peY, peRadius, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? (isStencil ? "rgba(24, 18, 10, 0.95)" : "rgba(6, 24, 14, 0.95)") : "rgba(14, 15, 18, 0.6)";
+            ctx.fill();
+            ctx.strokeStyle = isActive ? (isStencil ? "#fbbf24" : "#00ff88") : "#475569";
+            ctx.lineWidth = isActive ? 2 : 1;
+            ctx.stroke();
+
+            // PE Node Title
+            ctx.font = isLargePE ? "bold 8px 'JetBrains Mono', monospace" : "bold 10px 'JetBrains Mono', monospace";
+            ctx.fillStyle = isActive ? "#ffffff" : "#64748b";
+            ctx.textAlign = "center";
+            ctx.fillText(isLargePE ? "P" + p : "PE " + p, peX, peY + (isLargePE ? 3 : 3.5));
+
+            // Active Element Badge above PE
+            ctx.font = isLargePE ? "7.5px 'JetBrains Mono', monospace" : "9px 'JetBrains Mono', monospace";
+            ctx.fillStyle = isActive ? (isStencil ? "#fbbf24" : "#00ff88") : "#64748b";
+            ctx.fillText(isActive ? (isLargePE ? "i=" + elemIdx : "[i=" + elemIdx + "]") : (isLargePE ? "IDLE" : "[IDLE]"), peX, peY - peRadius - 6);
+
+            // Computed values below PE (Staggered two-tier when 16 PEs to eliminate text overlap!)
+            if (isActive) {
+                if (isLargePE) {
+                    const isOdd = p % 2 !== 0;
+                    const line1Y = isOdd ? peY + peRadius + 38 : peY + peRadius + 14;
+                    const line2Y = line1Y + 10;
+
+                    // Connector guide tick
+                    ctx.strokeStyle = isActive ? (isStencil ? "rgba(245, 158, 11, 0.35)" : "rgba(0, 255, 136, 0.35)") : "rgba(100, 116, 139, 0.2)";
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([1, 1]);
+                    ctx.beginPath();
+                    ctx.moveTo(peX, peY + peRadius + 1);
+                    ctx.lineTo(peX, line1Y - 8);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.font = "bold 7.5px 'JetBrains Mono', monospace";
+                    ctx.fillStyle = "#ffffff";
+
+                    if (!isStencil) {
+                        ctx.fillText("A+B", peX, line1Y);
+                        ctx.fillStyle = "#00ff88";
+                        ctx.fillText("C=" + ((elemIdx + 1) + (elemIdx + 101)), peX, line2Y);
+                    } else {
+                        if (elemIdx > 0 && elemIdx < simEngine.n - 1) {
+                            ctx.fillText("±1", peX, line1Y);
+                            ctx.fillStyle = "#00ff88";
+                            ctx.fillText("B=" + ((elemIdx - 1 + 10) + (elemIdx + 1 + 10)), peX, line2Y);
+                        } else {
+                            ctx.fillStyle = "#f59e0b";
+                            ctx.fillText("HALO", peX, line1Y);
+                            ctx.fillText("EDGE", peX, line2Y);
+                        }
+                    }
+                } else {
+                    ctx.font = "8.5px 'JetBrains Mono', monospace";
+                    ctx.fillStyle = "#ffffff";
+                    if (!isStencil) {
+                        ctx.fillText("A:" + (elemIdx + 1) + " B:" + (elemIdx + 101), peX, peY + 34);
+                        ctx.fillStyle = "#00ff88";
+                        ctx.fillText("C=" + ((elemIdx + 1) + (elemIdx + 101)), peX, peY + 45);
+                    } else {
+                        if (elemIdx > 0 && elemIdx < simEngine.n - 1) {
+                            ctx.fillText("A[" + (elemIdx - 1) + "]+A[" + (elemIdx + 1) + "]", peX, peY + 34);
+                            ctx.fillStyle = "#00ff88";
+                            ctx.fillText("B=" + ((elemIdx - 1 + 10) + (elemIdx + 1 + 10)), peX, peY + 45);
+                        } else {
+                            ctx.fillStyle = "#f59e0b";
+                            ctx.fillText("BOUNDARY", peX, peY + 38);
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- PACKET FLOW ANIMATION (1D) ---
+        if (simEngine.isPlaying) {
+            simEngine.packetProgress += 0.02 * simEngine.speed;
+
+            if (simEngine.packetProgress >= 1) {
+                simEngine.packetProgress = 0;
+                simEngine.stepIndex++;
+                simEngine.currentCycles = Math.min(
+                    simEngine.targetArrayCycles,
+                    simEngine.currentCycles + (isStencil ? 9 : 3)
+                );
+                document.getElementById('statArrayCycles').innerText = simEngine.currentCycles + " / " + simEngine.targetArrayCycles;
+                const hudClock = document.getElementById('hudClock');
+                if (hudClock) hudClock.innerText = "CYCLES: " + String(simEngine.currentCycles).padStart(4, '0') + " | " + simEngine.peCount + " LANES";
+                
+                const scrubber = document.getElementById('cycleScrubber');
+                const scrubberLabel = document.getElementById('scrubberLabel');
+                if (scrubber) scrubber.value = simEngine.currentCycles;
+                if (scrubberLabel) scrubberLabel.innerText = "CYCLE " + simEngine.currentCycles + " / " + simEngine.targetArrayCycles;
+
+                updateActiveStripChunk();
+                updateRegisterFileDump();
+
+                if (simEngine.stepIndex >= simEngine.totalSteps) {
+                    simEngine.isPlaying = false;
+                    simEngine.stepIndex = simEngine.totalSteps - 1;
+                    const playBtn = document.getElementById('playBtn');
+                    if (playBtn) {
+                        playBtn.innerText = "▶ REPLAY";
+                        playBtn.classList.remove('active');
+                    }
+                    playCyberBeep(1080, 'triangle', 0.2);
+                    document.getElementById('commActivityBadge').innerText = "EXECUTION COMPLETE // ALL STEPS COMMITTED";
+                    document.getElementById('commActivityBadge').style.color = "#00ff88";
+                } else {
+                    playCyberBeep(720, 'sine', 0.03);
+                }
+            }
+
+            const packetRadius = isLargePE ? 3.5 : 4.5;
+
+            if (isStencil) {
+                document.getElementById('commActivityBadge').innerText = "MESH: INTER-PE ROUTING (+6 CYCLES PER STEP)";
+                document.getElementById('commActivityBadge').style.color = "#fbbf24";
+
+                for (let p = 0; p < peCount - 1; p++) {
+                    const peX1 = marginX + p * peSpacing;
+                    const peX2 = marginX + (p + 1) * peSpacing;
+
+                    const px1 = peX1 + (peX2 - peX1) * simEngine.packetProgress;
+                    ctx.beginPath();
+                    ctx.arc(px1, peY - 4, packetRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = "#00ff88";
+                    ctx.shadowColor = "#00ff88";
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    const px2 = peX2 - (peX2 - peX1) * simEngine.packetProgress;
+                    ctx.beginPath();
+                    ctx.arc(px2, peY + 4, packetRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = "#fbbf24";
+                    ctx.shadowColor = "#fbbf24";
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            } else {
+                document.getElementById('commActivityBadge').innerText = "MESH: BROADCASTING LOCKSTEP OPERANDS";
+                document.getElementById('commActivityBadge').style.color = "#00ff88";
+
+                for (let p = 0; p < peCount; p++) {
+                    const peX = marginX + p * peSpacing;
+                    const px = cuX + (peX - cuX) * simEngine.packetProgress;
+                    const py = (cuY + 18) + (peY - peRadius - 6 - (cuY + 18)) * simEngine.packetProgress;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, packetRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = "#00ff88";
+                    ctx.shadowColor = "#00ff88";
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            requestAnimationFrame(drawPeCanvas);
+        }
+    } else {
+        // ==========================================
+        // 4×4 2D TORUS MESH TOPOLOGY (16 PEs)
+        // ==========================================
+        const rows = 4;
+        const cols = 4;
+        const gridW = Math.min(w * 0.75, 420);
+        const gridH = 220;
+        const startX = (w - gridW) / 2;
+        const startY = 110;
+        const colSpacing = gridW / (cols - 1);
+        const rowSpacing = gridH / (rows - 1);
+        const peRadius = 15;
+
+        // Mesh Interconnect Grid Lines
+        ctx.lineWidth = 1.2;
+        // Horizontal rows
+        for (let r = 0; r < rows; r++) {
+            const y = startY + r * rowSpacing;
+            ctx.beginPath();
+            ctx.strokeStyle = isStencil ? "rgba(245, 158, 11, 0.4)" : "rgba(0, 255, 136, 0.35)";
+            ctx.moveTo(startX, y);
+            ctx.lineTo(startX + (cols - 1) * colSpacing, y);
+            ctx.stroke();
+        }
+        // Vertical cols
+        for (let c = 0; c < cols; c++) {
+            const x = startX + c * colSpacing;
+            ctx.beginPath();
+            ctx.strokeStyle = isStencil ? "rgba(245, 158, 11, 0.4)" : "rgba(0, 255, 136, 0.35)";
+            ctx.moveTo(x, startY);
+            ctx.lineTo(x, startY + (rows - 1) * rowSpacing);
+            ctx.stroke();
+        }
+
+        // Broadcast lines from CU to top row
+        for (let c = 0; c < cols; c++) {
+            const peX = startX + c * colSpacing;
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(0, 255, 136, 0.2)";
+            ctx.setLineDash([2, 2]);
+            ctx.moveTo(cuX, cuY + 18);
+            ctx.lineTo(peX, startY - peRadius);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Draw 16 PEs in 4x4 Grid
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const p = r * cols + c;
+                const peX = startX + c * colSpacing;
+                const peY = startY + r * rowSpacing;
+                const elemIdx = simEngine.stepIndex * peCount + p;
+                const isActive = elemIdx < simEngine.n;
+
+                ctx.beginPath();
+                ctx.arc(peX, peY, peRadius, 0, Math.PI * 2);
+                ctx.fillStyle = isActive ? (isStencil ? "rgba(24, 18, 10, 0.95)" : "rgba(6, 24, 14, 0.95)") : "rgba(14, 15, 18, 0.6)";
+                ctx.fill();
+                ctx.strokeStyle = isActive ? (isStencil ? "#fbbf24" : "#00ff88") : "#475569";
+                ctx.lineWidth = isActive ? 2 : 1;
+                ctx.stroke();
+
+                ctx.font = "bold 8.5px 'JetBrains Mono', monospace";
+                ctx.fillStyle = isActive ? "#ffffff" : "#64748b";
+                ctx.textAlign = "center";
+                ctx.fillText("P" + p, peX, peY + 3);
+
+                ctx.font = "7.5px 'JetBrains Mono', monospace";
+                ctx.fillStyle = isActive ? (isStencil ? "#fbbf24" : "#00ff88") : "#64748b";
+                ctx.fillText(isActive ? "i=" + elemIdx : "IDLE", peX, peY - peRadius - 4);
+            }
+        }
+
+        // 2D Mesh Packet Routing Animation
+        if (simEngine.isPlaying) {
+            simEngine.packetProgress += 0.02 * simEngine.speed;
+
+            if (simEngine.packetProgress >= 1) {
+                simEngine.packetProgress = 0;
+                simEngine.stepIndex++;
+                simEngine.currentCycles = Math.min(
+                    simEngine.targetArrayCycles,
+                    simEngine.currentCycles + (isStencil ? 9 : 3)
+                );
+                document.getElementById('statArrayCycles').innerText = simEngine.currentCycles + " / " + simEngine.targetArrayCycles;
+                const hudClock = document.getElementById('hudClock');
+                if (hudClock) hudClock.innerText = "CYCLES: " + String(simEngine.currentCycles).padStart(4, '0') + " | " + simEngine.peCount + " LANES";
+
+                const scrubber = document.getElementById('cycleScrubber');
+                const scrubberLabel = document.getElementById('scrubberLabel');
+                if (scrubber) scrubber.value = simEngine.currentCycles;
+                if (scrubberLabel) scrubberLabel.innerText = "CYCLE " + simEngine.currentCycles + " / " + simEngine.targetArrayCycles;
+
+                updateActiveStripChunk();
+                updateRegisterFileDump();
+
+                if (simEngine.stepIndex >= simEngine.totalSteps) {
+                    simEngine.isPlaying = false;
+                    simEngine.stepIndex = simEngine.totalSteps - 1;
+                    const playBtn = document.getElementById('playBtn');
+                    if (playBtn) {
+                        playBtn.innerText = "▶ REPLAY";
+                        playBtn.classList.remove('active');
+                    }
+                    playCyberBeep(1080, 'triangle', 0.2);
+                    document.getElementById('commActivityBadge').innerText = "2D MESH: EXECUTION COMPLETE";
+                    document.getElementById('commActivityBadge').style.color = "#00ff88";
+                } else {
+                    playCyberBeep(720, 'sine', 0.03);
+                }
+            }
+
+            if (isStencil) {
+                document.getElementById('commActivityBadge').innerText = "2D MESH: 4-WAY NEIGHBOR ROUTING (N, S, E, W)";
+                document.getElementById('commActivityBadge').style.color = "#fbbf24";
+
+                // Horizontal packets in 2D mesh
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols - 1; c++) {
+                        const peX1 = startX + c * colSpacing;
+                        const peX2 = startX + (c + 1) * colSpacing;
+                        const peY = startY + r * rowSpacing;
+
+                        const px = peX1 + (peX2 - peX1) * simEngine.packetProgress;
+                        ctx.beginPath();
+                        ctx.arc(px, peY - 3, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = "#00ff88";
+                        ctx.fill();
+                    }
+                }
+                // Vertical packets in 2D mesh
+                for (let c = 0; c < cols; c++) {
+                    for (let r = 0; r < rows - 1; r++) {
+                        const peX = startX + c * colSpacing;
+                        const peY1 = startY + r * rowSpacing;
+                        const peY2 = startY + (r + 1) * rowSpacing;
+
+                        const py = peY1 + (peY2 - peY1) * simEngine.packetProgress;
+                        ctx.beginPath();
+                        ctx.arc(peX + 3, py, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = "#fbbf24";
+                        ctx.fill();
+                    }
+                }
+            } else {
+                document.getElementById('commActivityBadge').innerText = "2D MESH: CU BROADCASTING TO 16 PEs";
+                document.getElementById('commActivityBadge').style.color = "#00ff88";
+
+                for (let c = 0; c < cols; c++) {
+                    const peX = startX + c * colSpacing;
+                    const px = cuX + (peX - cuX) * simEngine.packetProgress;
+                    const py = (cuY + 18) + (startY - peRadius - (cuY + 18)) * simEngine.packetProgress;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = "#00ff88";
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(drawPeCanvas);
+        }
+    }
+}
+
+function togglePlaySimulation() {
+    if (simEngine.stepIndex >= simEngine.totalSteps - 1 && !simEngine.isPlaying) {
+        simEngine.stepIndex = 0;
+        simEngine.currentCycles = 0;
+        document.getElementById('statArrayCycles').innerText = `0 / ${simEngine.targetArrayCycles}`;
+        const hudClock = document.getElementById('hudClock');
+        if (hudClock) hudClock.innerText = `CYCLES: 0000 | ${simEngine.peCount} LANES`;
+        updateActiveStripChunk();
+    }
+
+    simEngine.isPlaying = !simEngine.isPlaying;
+    const btn = document.getElementById('playBtn');
+    if (simEngine.isPlaying) {
+        if (btn) {
+            btn.innerText = "⏸ PAUSE";
+            btn.classList.add('active');
+        }
+        playCyberBeep(780, 'triangle', 0.08);
+        requestAnimationFrame(drawPeCanvas);
+    } else {
+        if (btn) {
+            btn.innerText = "▶ PLAY";
+            btn.classList.remove('active');
+        }
+        playCyberBeep(450, 'triangle', 0.06);
+    }
+}
+
+function stepSimulation() {
+    simEngine.isPlaying = false;
+    const btn = document.getElementById('playBtn');
+    if (btn) {
+        btn.innerText = "▶ PLAY";
+        btn.classList.remove('active');
+    }
+
+    if (simEngine.stepIndex < simEngine.totalSteps - 1) {
+        simEngine.stepIndex++;
+        simEngine.currentCycles = Math.min(
+            simEngine.targetArrayCycles,
+            simEngine.currentCycles + (simEngine.isStencil ? 9 : 3)
+        );
+        document.getElementById('statArrayCycles').innerText = `${simEngine.currentCycles} / ${simEngine.targetArrayCycles}`;
+        const hudClock = document.getElementById('hudClock');
+        if (hudClock) hudClock.innerText = `CYCLES: ${String(simEngine.currentCycles).padStart(4, '0')} | ${simEngine.peCount} LANES`;
+        updateActiveStripChunk();
+        playCyberBeep(850, 'sine', 0.04);
+        drawPeCanvas();
+    } else {
+        playCyberBeep(350, 'sine', 0.05);
+    }
+}
+
+function resetSimulation() {
+    simEngine.isPlaying = false;
+    simEngine.stepIndex = 0;
+    simEngine.currentCycles = 0;
+    simEngine.packetProgress = 0;
+    document.getElementById('statArrayCycles').innerText = `0 / ${simEngine.targetArrayCycles}`;
+    const hudClock = document.getElementById('hudClock');
+    if (hudClock) hudClock.innerText = `CYCLES: 0000 | ${simEngine.peCount} LANES`;
+
+    const btn = document.getElementById('playBtn');
+    if (btn) {
+        btn.innerText = "▶ PLAY";
+        btn.classList.remove('active');
+    }
+    updateActiveStripChunk();
+    playCyberBeep(350, 'sine', 0.05);
+    drawPeCanvas();
+}
+
+function updateSimSpeed() {
+    simEngine.speed = parseFloat(document.getElementById('simSpeedSelect').value) || 2;
+}
+
+/* ==========================================================================
+   MODULE 3: APPLICATION RECOMMENDER
+   ========================================================================== */
+const workloadDB = {
+    image_filter: {
+        arch: "Array Processor (2D SIMD Mesh)",
+        scores: { scalar: 20, vector: 95, array: 99 },
+        whyWin: "2D spatial pixel grid directly maps onto discrete physical PE mesh. Nearest-neighbor pixel transfers reuse values across local interconnections without saturating central memory bus.",
+        whyStruggle: "Vector processors must perform repetitive unaligned register shifts. Scalar processors execute 1 pixel at a time, completely bottlenecked by loop indexing instructions.",
+        silicon: "Google TPU v4/v5, NVIDIA Tensor Cores, Image Processing SIMD Units",
+        params: "REGULARITY: HIGH // DEPENDENCY: 2D STENCIL // COMM: NEIGHBOR LOCAL // STRIDE: CONTIGUOUS"
+    },
+    matrix_multiply: {
+        arch: "Array Processor (Systolic Mesh)",
+        scores: { scalar: 20, vector: 95, array: 99 },
+        whyWin: "Values flow rhythmically through rows and columns in systolic lockstep. Data is reused dozens of times without round-trips to DRAM, achieving maximum arithmetic density.",
+        whyStruggle: "Scalar CPUs bottleneck on memory bandwidth and serial FMA stalls. Vector processors perform well with FMA chaining, but cannot match systolic data reuse.",
+        silicon: "Google Cloud TPU (Systolic Matrix Engine), Apple Neural Engine",
+        params: "REGULARITY: VERY HIGH // DEPENDENCY: REDUCTION TREE // COMM: SYSTOLIC FORWARDING"
+    },
+    grid_physics: {
+        arch: "Array Processor (SIMD Lattice)",
+        scores: { scalar: 20, vector: 95, array: 99 },
+        whyWin: "Differential equation finite-difference grids map onto PEs with synchronous halo boundary exchanges. High lockstep synchronization perfectly fits physical time-step updates.",
+        whyStruggle: "Vector processors require expensive multi-dimensional gather/scatter instructions across grid planes. Scalar CPUs are vastly too slow for multi-million cell grids.",
+        silicon: "Custom PDE Supercomputers, GPU Mesh Compute Arrays",
+        params: "REGULARITY: HIGH // DEPENDENCY: HALO STENCIL // COMM: SYNCHRONOUS HALO MESH"
+    },
+    database_query: {
+        arch: "Vector Processor (Streaming SIMD)",
+        scores: { scalar: 20, vector: 95, array: 65 },
+        whyWin: "Unit-stride contiguous column scans with zero inter-lane communication. Pipelined vector registers stream through gigabytes of table columns at memory bus wire-speed.",
+        whyStruggle: "Array processors introduce unnecessary inter-PE synchronization overhead. Scalar processors stall on memory latency and branch predictor penalties.",
+        silicon: "Intel AVX-512, ARM SVE2, RISC-V Vector Extensions",
+        params: "REGULARITY: MEDIUM // DEPENDENCY: ZERO (INDEPENDENT) // COMM: NONE // STRIDE: UNIT-STRIDE"
+    },
+    linked_list: {
+        arch: "Scalar Processor (Superscalar OOO)",
+        scores: { scalar: 99, vector: 5, array: 5 },
+        whyWin: "Strict loop-carried pointer chasing (`node = node->next`). High-frequency superscalar CPU with deep L1/L2 caches, out-of-order execution, and hardware prefetchers dominates.",
+        whyStruggle: "Vector and Array processors suffer total failure: SIMD lanes cannot execute concurrently when address(i+1) depends on data(i). 0% vector lane utilization.",
+        silicon: "Intel Core i9-14900K, AMD Ryzen Zen 4 / Zen 5",
+        params: "REGULARITY: LOW // DEPENDENCY: POINTER CHASING // COMM: RANDOM DRAM // STRIDE: NON-CONTIGUOUS"
+    }
+};
+
+function runRecommender() {
+    const key = document.getElementById('workloadSelect').value;
+    const item = workloadDB[key];
+
+    document.getElementById('workloadParamsDisplay').innerText = item.params;
+    document.getElementById('recBadgeContainer').innerHTML = `
+        <div class="status-badge badge-secure" style="font-size:0.95rem;">
+            <span>★</span> RECOMMENDED SILICON: ${item.arch.toUpperCase()}
+        </div>
+    `;
+
+    document.getElementById('recScoreScalar').innerText = `${item.scores.scalar}/100`;
+    document.getElementById('recBarScalar').style.width = `${item.scores.scalar}%`;
+
+    document.getElementById('recScoreVector').innerText = `${item.scores.vector}/100`;
+    document.getElementById('recBarVector').style.width = `${item.scores.vector}%`;
+
+    document.getElementById('recScoreArray').innerText = `${item.scores.array}/100`;
+    document.getElementById('recBarArray').style.width = `${item.scores.array}%`;
+
+    document.getElementById('recWhyWinText').innerText = item.whyWin;
+    document.getElementById('recWhyStruggleText').innerText = item.whyStruggle;
+    document.getElementById('recSiliconText').innerText = item.silicon;
+
+    playCyberBeep(680, 'sine', 0.05);
+}
+
+function deployWorkloadToSimulator() {
+    const key = document.getElementById('workloadSelect').value;
+    playCyberBeep(920, 'triangle', 0.12);
+
+    // Switch to Tab 2 (Three-Way Simulator)
+    activateTab(1);
+
+    // Automatically set the appropriate kernel for this workload
+    const simModeSelect = document.getElementById('simModeSelect');
+    if (simModeSelect) {
+        if (key === 'image_filter' || key === 'grid_physics') {
+            simModeSelect.value = 'stencil';
+        } else {
+            simModeSelect.value = 'add';
+        }
+    }
+
+    // Initialize simulation parameters
+    runSimEngine();
+
+    // Trigger playback animation
+    setTimeout(() => {
+        if (!simEngine.isPlaying) {
+            togglePlaySimulation();
+        }
+    }, 350);
+}
+
+/* ==========================================================================
+   MODULE 4: DYNAMIC CANVAS SPEEDUP & AMDAHL CHARTS (RUNNING 60FPS TELEMETRY)
+   ========================================================================== */
+let graphMode = 'length';
+let graphHoverPos = null;
+let graphIntensity = 1.25;
+let graphAutoSweep = true;
+let chartAnimStartTime = performance.now();
+
+const chartCanvas = document.getElementById('chartCanvas');
+const chartCtx = chartCanvas ? chartCanvas.getContext('2d') : null;
+
+function toggleGraphAutoSweep() {
+    graphAutoSweep = !graphAutoSweep;
+    const btn = document.getElementById('btnGraphAutoSweep');
+    const icon = document.getElementById('autoSweepIcon');
+    const text = document.getElementById('autoSweepText');
+    if (btn && icon && text) {
+        if (graphAutoSweep) {
+            btn.style.borderColor = '#00f0ff';
+            btn.style.background = 'rgba(0, 240, 255, 0.22)';
+            icon.innerText = '⚡';
+            icon.style.color = '#00f0ff';
+            text.innerText = 'AUTO-SWEEP: ON';
+            playCyberBeep(980, 'triangle', 0.06);
+        } else {
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            btn.style.background = 'transparent';
+            icon.innerText = '⏸';
+            icon.style.color = '#94a3b8';
+            text.innerText = 'AUTO-SWEEP: OFF';
+            playCyberBeep(420, 'triangle', 0.06);
+        }
+    }
+}
+
+function switchGraphMode(mode) {
+    graphMode = mode;
+    const btn1 = document.getElementById('graphModeBtn1');
+    const btn2 = document.getElementById('graphModeBtn2');
+    const btn3 = document.getElementById('graphModeBtn3');
+    if (btn1) btn1.classList.toggle('active', mode === 'length');
+    if (btn2) btn2.classList.toggle('active', mode === 'amdahl');
+    if (btn3) btn3.classList.toggle('active', mode === 'roofline');
+
+    const s1 = document.getElementById('sliderContainer1');
+    const s2 = document.getElementById('sliderContainer2');
+    const s3 = document.getElementById('sliderContainer3');
+
+    if (s1 && s2 && s3) {
+        if (mode === 'length') {
+            s1.style.display = 'flex';
+            s2.style.display = 'none';
+            s3.style.display = 'none';
+            const val = document.getElementById('graphNSlider')?.value || 64;
+            onGraphNSlider(val, false);
+        } else if (mode === 'amdahl') {
+            s1.style.display = 'none';
+            s2.style.display = 'flex';
+            s3.style.display = 'none';
+            const val = document.getElementById('graphFSlider')?.value || 90;
+            onGraphFSlider(val, false);
+        } else {
+            s1.style.display = 'none';
+            s2.style.display = 'none';
+            s3.style.display = 'flex';
+            const val = document.getElementById('graphIntensitySlider')?.value || 1.25;
+            onGraphIntensitySlider(val, false);
+        }
+    }
+
+    playCyberBeep(820, 'sine', 0.04);
+}
+
+function onGraphNSlider(val, shouldBeep = true) {
+    const n = parseInt(val) || 1;
+    const nLabel = document.getElementById('graphNVal');
+    if (nLabel) nLabel.innerText = "n = " + n;
+
+    const scalar = 5 * n;
+    const vector = Math.ceil(n / 64) * 12 + n;
+    const spd = (scalar / vector).toFixed(2);
+
+    const metric = document.getElementById('graphLiveMetric');
+    if (metric) {
+        metric.innerHTML = "SPEEDUP: <strong style='color:#00f0ff;'>" + spd + "x</strong> (" + vector + "c Vector vs " + scalar + "c Scalar)";
+    }
+
+    if (shouldBeep) {
+        graphAutoSweep = false;
+        updateAutoSweepButtonUI();
+        playCyberBeep(320 + Math.min(n * 3, 600), 'sine', 0.02);
+    }
+}
+
+function onGraphFSlider(val, shouldBeep = true) {
+    const f = parseInt(val) || 0;
+    const fLabel = document.getElementById('graphFVal');
+    if (fLabel) fLabel.innerText = "f = " + f + "%";
+
+    const fDec = f / 100;
+    const sInf = f >= 99.9 ? "∞" : (1 / (1 - fDec)).toFixed(2);
+    const s16 = (1 / ((1 - fDec) + fDec / 16)).toFixed(2);
+
+    const metric = document.getElementById('graphLiveMetric');
+    if (metric) {
+        metric.innerHTML = "SPEEDUP: P=16 &rarr; <strong style='color:#00ff88;'>" + s16 + "x</strong> | P=&infin; Limit &rarr; <strong style='color:#fbbf24;'>" + sInf + "x</strong>";
+    }
+
+    if (shouldBeep) {
+        graphAutoSweep = false;
+        updateAutoSweepButtonUI();
+        playCyberBeep(280 + f * 6, 'sine', 0.02);
+    }
+}
+
+function onGraphIntensitySlider(val, shouldBeep = true) {
+    graphIntensity = parseFloat(val) || 1.0;
+    const label = document.getElementById('graphIntensityVal');
+    if (label) label.innerText = graphIntensity.toFixed(2) + " FLOP/B";
+
+    const peakCompute = 96.0;
+    const memBandwidth = 64.0;
+    const attainablePerf = Math.min(peakCompute, graphIntensity * memBandwidth);
+    const isMemoryBound = graphIntensity < (peakCompute / memBandwidth);
+
+    const metric = document.getElementById('graphLiveMetric');
+    if (metric) {
+        metric.innerHTML = "ATTAINABLE: <strong style='color:" + (isMemoryBound ? '#fbbf24' : '#00ff88') + ";'>" + attainablePerf.toFixed(1) + " GFLOP/s</strong> (" + (isMemoryBound ? 'MEMORY BOUND' : 'COMPUTE BOUND') + ")";
+    }
+
+    if (shouldBeep) {
+        graphAutoSweep = false;
+        updateAutoSweepButtonUI();
+        playCyberBeep(320 + Math.min(graphIntensity * 100, 600), 'sine', 0.02);
+    }
+}
+
+function updateAutoSweepButtonUI() {
+    const btn = document.getElementById('btnGraphAutoSweep');
+    const icon = document.getElementById('autoSweepIcon');
+    const text = document.getElementById('autoSweepText');
+    if (btn && icon && text) {
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        btn.style.background = 'transparent';
+        icon.innerText = '⏸';
+        icon.style.color = '#94a3b8';
+        text.innerText = 'AUTO-SWEEP: OFF';
+    }
+}
+
+function setRooflinePreset(type) {
+    const presets = {
+        vecadd: 0.17,
+        stencil: 0.50,
+        fft: 1.20,
+        gemm: 4.50
+    };
+    const val = presets[type] || 1.0;
+    const slider = document.getElementById('graphIntensitySlider');
+    if (slider) slider.value = val;
+    onGraphIntensitySlider(val);
+}
+
+function resizeChartCanvas() {
+    if (!chartCanvas || !chartCtx) return;
+    const rect = chartCanvas.getBoundingClientRect();
+    const w = rect.width;
+    if (!w || w <= 0) return;
+    const h = 360;
+    const dpr = window.devicePixelRatio || 1;
+    chartCanvas.width = Math.round(w * dpr);
+    chartCanvas.height = Math.round(h * dpr);
+    chartCanvas.style.height = h + "px";
+    chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+if (chartCanvas) {
+    chartCanvas.addEventListener('mousemove', (e) => {
+        const rect = chartCanvas.getBoundingClientRect();
+        graphHoverPos = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    });
+
+    chartCanvas.addEventListener('mouseleave', () => {
+        graphHoverPos = null;
+    });
+}
+
+function drawSpeedupChart() {
+    if (!chartCtx || !chartCanvas) return;
+    const rect = chartCanvas.getBoundingClientRect();
+    const w = rect.width;
+    if (!w || w <= 0) return;
+    const h = 360;
+    const dpr = window.devicePixelRatio || 1;
+
+    const animTime = (performance.now() - chartAnimStartTime) * 0.001;
+
+    // Handle Auto-Sweep oscillation
+    if (graphAutoSweep) {
+        const sweepSpeed = 0.25;
+        const sinWave = (Math.sin(animTime * sweepSpeed * Math.PI * 2) * 0.5 + 0.5);
+
+        if (graphMode === 'length') {
+            const autoN = Math.round(1 + sinWave * 199);
+            const slider = document.getElementById('graphNSlider');
+            if (slider) slider.value = autoN;
+            onGraphNSlider(autoN, false);
+        } else if (graphMode === 'amdahl') {
+            const autoF = Math.round(sinWave * 95);
+            const slider = document.getElementById('graphFSlider');
+            if (slider) slider.value = autoF;
+            onGraphFSlider(autoF, false);
+        } else if (graphMode === 'roofline') {
+            const minLog = Math.log2(0.05);
+            const maxLog = Math.log2(8.0);
+            const autoInt = Math.pow(2, minLog + sinWave * (maxLog - minLog));
+            const slider = document.getElementById('graphIntensitySlider');
+            if (slider) slider.value = autoInt.toFixed(2);
+            onGraphIntensitySlider(autoInt, false);
+        }
+    }
+
+    if (chartCanvas.width !== Math.round(w * dpr) || chartCanvas.height !== Math.round(h * dpr)) {
+        chartCanvas.width = Math.round(w * dpr);
+        chartCanvas.height = Math.round(h * dpr);
+        chartCanvas.style.height = h + "px";
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    chartCtx.clearRect(0, 0, w, h);
+
+    const padLeft = 65;
+    const padRight = 50;
+    const padTop = 60;
+    const padBottom = 55;
+    const pw = w - padLeft - padRight;
+    const ph = h - padTop - padBottom;
+
+    // Outer cyber backdrop
+    chartCtx.fillStyle = "rgba(6, 8, 12, 0.98)";
+    chartCtx.fillRect(padLeft, padTop, pw, ph);
+
+    // Subtle dynamic grid lines with animated shimmer
+    chartCtx.lineWidth = 1;
+    const gridCols = 8;
+    for (let g = 0; g <= gridCols; g++) {
+        const gx = padLeft + (g / gridCols) * pw;
+        const gridAlpha = 0.04 + Math.sin(animTime * 2 + g) * 0.02;
+        chartCtx.strokeStyle = "rgba(0, 240, 255, " + gridAlpha + ")";
+        chartCtx.beginPath();
+        chartCtx.moveTo(gx, padTop);
+        chartCtx.lineTo(gx, padTop + ph);
+        chartCtx.stroke();
+    }
+
+    // Live Telemetry Scanning Radar Beam
+    const scanPhase = (animTime * 0.18) % 1.0;
+    const scanX = padLeft + scanPhase * pw;
+
+    const scanGrad = chartCtx.createLinearGradient(scanX - 50, 0, scanX, 0);
+    scanGrad.addColorStop(0, "rgba(0, 240, 255, 0.0)");
+    scanGrad.addColorStop(0.8, "rgba(0, 240, 255, 0.08)");
+    scanGrad.addColorStop(1.0, "rgba(0, 255, 136, 0.22)");
+    chartCtx.fillStyle = scanGrad;
+    chartCtx.fillRect(Math.max(padLeft, scanX - 50), padTop, Math.min(pw, 50), ph);
+
+    // Glowing scanline beam
+    chartCtx.strokeStyle = "rgba(0, 255, 136, 0.75)";
+    chartCtx.lineWidth = 1.2;
+    chartCtx.beginPath();
+    chartCtx.moveTo(scanX, padTop);
+    chartCtx.lineTo(scanX, padTop + ph);
+    chartCtx.stroke();
+
+    // Border glow
+    chartCtx.strokeStyle = "rgba(0, 240, 255, 0.35)";
+    chartCtx.lineWidth = 1.2;
+    chartCtx.strokeRect(padLeft, padTop, pw, ph);
+
+    if (graphMode === 'length') {
+        // ==========================================
+        // MODE 1: SPEEDUP vs VECTOR LENGTH (n)
+        // Multi-Color Running Telemetry Curve
+        // ==========================================
+        chartCtx.textAlign = "center";
+        chartCtx.font = "bold 13px 'Orbitron', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("SPEEDUP vs VECTOR LENGTH (n)", w / 2, 26);
+
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#00f0ff";
+        chartCtx.fillText("PIPELINE STARTUP AMORTISATION & STRIP-MINING SAWTOOTH // SCALAR vs VECTOR", w / 2, 42);
+
+        // Y-AXIS (0x to 5x)
+        for (let tick = 0; tick <= 5; tick++) {
+            const yPos = padTop + ph - (tick / 5.0) * ph;
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = tick === 1 ? "rgba(245, 158, 11, 0.55)" : "rgba(255, 255, 255, 0.08)";
+            chartCtx.lineWidth = tick === 1 ? 1.5 : 1;
+            if (tick === 1) {
+                chartCtx.setLineDash([5, 4]);
+                chartCtx.lineDashOffset = -animTime * 12;
+            }
+            chartCtx.moveTo(padLeft, yPos);
+            chartCtx.lineTo(padLeft + pw, yPos);
+            chartCtx.stroke();
+            chartCtx.setLineDash([]);
+
+            chartCtx.textAlign = "right";
+            chartCtx.font = tick === 1 ? "bold 10px 'JetBrains Mono', monospace" : "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = tick === 1 ? "#fbbf24" : "#94a3b8";
+            chartCtx.fillText(tick.toFixed(1) + "x", padLeft - 10, yPos + 3.5);
+        }
+
+        // Y-axis label
+        chartCtx.save();
+        chartCtx.translate(18, padTop + ph / 2);
+        chartCtx.rotate(-Math.PI / 2);
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = "#38bdf8";
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillText("Speedup over Scalar (Cycles_Scalar / Cycles_SIMD)", 0, 0);
+        chartCtx.restore();
+
+        // X-AXIS
+        const xTicks = [1, 32, 64, 96, 128, 160, 200];
+        xTicks.forEach(val => {
+            const xPos = padLeft + ((val - 1) / 199) * pw;
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = val === 64 || val === 128 ? "rgba(0, 240, 255, 0.45)" : "rgba(255, 255, 255, 0.08)";
+            if (val === 64 || val === 128) chartCtx.setLineDash([3, 3]);
+            chartCtx.moveTo(xPos, padTop);
+            chartCtx.lineTo(xPos, padTop + ph);
+            chartCtx.stroke();
+            chartCtx.setLineDash([]);
+
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+            chartCtx.moveTo(xPos, padTop + ph);
+            chartCtx.lineTo(xPos, padTop + ph + 5);
+            chartCtx.stroke();
+
+            chartCtx.textAlign = "center";
+            chartCtx.font = val === 64 ? "bold 10px 'JetBrains Mono', monospace" : "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = val === 64 ? "#00f0ff" : "#94a3b8";
+            chartCtx.fillText("n=" + val, xPos, padTop + ph + 18);
+        });
+
+        chartCtx.textAlign = "center";
+        chartCtx.font = "11px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("Vector Length n (elements)", w / 2, h - 14);
+
+        // Vibrant Multi-Stop Area Gradient Fill
+        const areaGrad = chartCtx.createLinearGradient(0, padTop, 0, padTop + ph);
+        areaGrad.addColorStop(0.0, "rgba(0, 240, 255, 0.35)");
+        areaGrad.addColorStop(0.4, "rgba(0, 255, 136, 0.20)");
+        areaGrad.addColorStop(0.75, "rgba(245, 158, 11, 0.12)");
+        areaGrad.addColorStop(1.0, "rgba(0, 0, 0, 0.0)");
+
+        chartCtx.beginPath();
+        for (let n = 1; n <= 200; n++) {
+            const sc = 5 * n;
+            const vc = Math.ceil(n / 64) * 12 + n;
+            const spd = sc / vc;
+            const x = padLeft + ((n - 1) / 199) * pw;
+            const y = padTop + ph - (spd / 5.0) * ph;
+            if (n === 1) chartCtx.moveTo(x, y);
+            else chartCtx.lineTo(x, y);
+        }
+        chartCtx.lineTo(padLeft + pw, padTop + ph);
+        chartCtx.lineTo(padLeft, padTop + ph);
+        chartCtx.closePath();
+        chartCtx.fillStyle = areaGrad;
+        chartCtx.fill();
+
+        // Multi-Color Horizontal Gradient for the Running Curve Stroke
+        const strokeGrad = chartCtx.createLinearGradient(padLeft, 0, padLeft + pw, 0);
+        strokeGrad.addColorStop(0.00, "#f59e0b");
+        strokeGrad.addColorStop(0.12, "#38bdf8");
+        strokeGrad.addColorStop(0.32, "#00f0ff");
+        strokeGrad.addColorStop(0.34, "#fbbf24");
+        strokeGrad.addColorStop(0.55, "#00ff88");
+        strokeGrad.addColorStop(0.64, "#00f0ff");
+        strokeGrad.addColorStop(0.66, "#fbbf24");
+        strokeGrad.addColorStop(0.85, "#2dd4bf");
+        strokeGrad.addColorStop(1.00, "#00ff88");
+
+        // Outer Neon Glow Pass
+        chartCtx.save();
+        chartCtx.shadowColor = "#00f0ff";
+        chartCtx.shadowBlur = 14;
+        chartCtx.strokeStyle = strokeGrad;
+        chartCtx.lineWidth = 3;
+        chartCtx.beginPath();
+        for (let n = 1; n <= 200; n++) {
+            const sc = 5 * n;
+            const vc = Math.ceil(n / 64) * 12 + n;
+            const spd = sc / vc;
+            const x = padLeft + ((n - 1) / 199) * pw;
+            const y = padTop + ph - (spd / 5.0) * ph;
+            if (n === 1) chartCtx.moveTo(x, y);
+            else chartCtx.lineTo(x, y);
+        }
+        chartCtx.stroke();
+        chartCtx.restore();
+
+        // Inner Sharp Crisp Pass
+        chartCtx.strokeStyle = "#ffffff";
+        chartCtx.lineWidth = 1.2;
+        chartCtx.beginPath();
+        for (let n = 1; n <= 200; n++) {
+            const sc = 5 * n;
+            const vc = Math.ceil(n / 64) * 12 + n;
+            const spd = sc / vc;
+            const x = padLeft + ((n - 1) / 199) * pw;
+            const y = padTop + ph - (spd / 5.0) * ph;
+            if (n === 1) chartCtx.moveTo(x, y);
+            else chartCtx.lineTo(x, y);
+        }
+        chartCtx.stroke();
+
+        // 1.0x Baseline Callout (Amber Badge)
+        const yBase = padTop + ph - (1.0 / 5.0) * ph;
+        chartCtx.fillStyle = "rgba(24, 18, 10, 0.95)";
+        chartCtx.strokeStyle = "#fbbf24";
+        chartCtx.lineWidth = 1;
+        chartCtx.beginPath();
+        chartCtx.roundRect(padLeft + 15, yBase - 18, 145, 16, 4);
+        chartCtx.fill();
+        chartCtx.stroke();
+        chartCtx.font = "bold 9px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.textAlign = "center";
+        chartCtx.fillText("⚡ 1.0x SCALAR BASELINE", padLeft + 87, yBase - 6);
+
+        // Animated Traveling Energy Photons along the Curve!
+        const numPhotons = 4;
+        const photonColors = ["#00f0ff", "#00ff88", "#fbbf24", "#e879f9"];
+        for (let k = 0; k < numPhotons; k++) {
+            const photonProg = ((animTime * 0.16 + k * 0.25) % 1.0);
+            const pN = 1 + photonProg * 199;
+            const pSc = 5 * pN;
+            const pVc = Math.ceil(pN / 64) * 12 + pN;
+            const pSpd = pSc / pVc;
+            const px = padLeft + ((pN - 1) / 199) * pw;
+            const py = padTop + ph - (pSpd / 5.0) * ph;
+
+            chartCtx.save();
+            chartCtx.shadowColor = photonColors[k % photonColors.length];
+            chartCtx.shadowBlur = 12;
+            chartCtx.fillStyle = photonColors[k % photonColors.length];
+            chartCtx.beginPath();
+            chartCtx.arc(px, py, 4, 0, Math.PI * 2);
+            chartCtx.fill();
+            chartCtx.fillStyle = "#ffffff";
+            chartCtx.beginPath();
+            chartCtx.arc(px, py, 2, 0, Math.PI * 2);
+            chartCtx.fill();
+            chartCtx.restore();
+        }
+
+        // n=1 Scalar Advantage Point
+        const x1 = padLeft;
+        const y1 = padTop + ph - ((5 / 13) / 5.0) * ph;
+        chartCtx.beginPath();
+        chartCtx.arc(x1, y1, 4.5, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#ffffff";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.stroke();
+        chartCtx.font = "bold 9px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.textAlign = "left";
+        chartCtx.fillText("n=1: 0.38x (Scalar wins)", x1 + 10, y1 + 14);
+
+        // n=64 Peak point with pulsing beacon
+        const x64 = padLeft + ((64 - 1) / 199) * pw;
+        const y64 = padTop + ph - ((320 / 76) / 5.0) * ph;
+        chartCtx.beginPath();
+        chartCtx.arc(x64, y64, 5, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#00f0ff";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#ffffff";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.stroke();
+        chartCtx.font = "bold 9.5px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#00f0ff";
+        chartCtx.textAlign = "center";
+        chartCtx.fillText("n=64: 4.21x (Chunk 1 Peak)", x64 - 15, y64 - 10);
+
+        // Sawtooth Drop Hazard Beacon at n=65
+        const x65 = padLeft + ((65 - 1) / 199) * pw;
+        const y65 = padTop + ph - ((325 / 91) / 5.0) * ph;
+        const beaconPulse = Math.sin(animTime * 6) * 2;
+        chartCtx.beginPath();
+        chartCtx.arc(x65, y65, 4 + beaconPulse, 0, Math.PI * 2);
+        chartCtx.strokeStyle = "rgba(245, 158, 11, 0.75)";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.stroke();
+        chartCtx.beginPath();
+        chartCtx.arc(x65, y65, 3, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.fill();
+
+        chartCtx.font = "bold 9px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.textAlign = "left";
+        chartCtx.fillText("⚠️ Sawtooth drop (+12c chunk)", x65 + 8, y65 + 16);
+
+        // Live Animated Reticle Cursor at current N
+        const currentN = parseInt(document.getElementById('graphNSlider')?.value) || 64;
+        const curX = padLeft + ((currentN - 1) / 199) * pw;
+        const curSc = 5 * currentN;
+        const curVc = Math.ceil(currentN / 64) * 12 + currentN;
+        const curSpd = (curSc / curVc);
+        const curY = padTop + ph - (curSpd / 5.0) * ph;
+
+        // Animated Vertical Laser Guide Line
+        chartCtx.beginPath();
+        chartCtx.strokeStyle = "rgba(0, 240, 255, 0.45)";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.setLineDash([4, 3]);
+        chartCtx.moveTo(curX, padTop);
+        chartCtx.lineTo(curX, padTop + ph);
+        chartCtx.stroke();
+        chartCtx.setLineDash([]);
+
+        // Pulsing Sonar Ring at Cursor
+        const sonarR = 8 + (animTime * 14 % 12);
+        const sonarAlpha = 1 - (sonarR - 8) / 12;
+        chartCtx.beginPath();
+        chartCtx.arc(curX, curY, sonarR, 0, Math.PI * 2);
+        chartCtx.strokeStyle = "rgba(0, 240, 255, " + sonarAlpha + ")";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.stroke();
+
+        chartCtx.save();
+        chartCtx.shadowColor = "#00f0ff";
+        chartCtx.shadowBlur = 16;
+        chartCtx.beginPath();
+        chartCtx.arc(curX, curY, 6, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#00f0ff";
+        chartCtx.lineWidth = 2.5;
+        chartCtx.stroke();
+        chartCtx.restore();
+
+        // High-Contrast Callout Pill
+        const pillText = "n=" + currentN + ": " + curSpd.toFixed(2) + "x (" + curVc + "c vs " + curSc + "c)";
+        chartCtx.font = "bold 9.5px 'JetBrains Mono', monospace";
+        const tw = chartCtx.measureText(pillText).width;
+        let px = curX - (tw + 16) / 2;
+        px = Math.max(padLeft + 4, Math.min(padLeft + pw - tw - 20, px));
+        let py = curY - 32;
+        if (py < padTop + 4) py = curY + 14;
+
+        chartCtx.fillStyle = "rgba(10, 14, 20, 0.95)";
+        chartCtx.strokeStyle = "#00f0ff";
+        chartCtx.lineWidth = 1.4;
+        chartCtx.beginPath();
+        chartCtx.roundRect(px, py, tw + 16, 22, 4);
+        chartCtx.fill();
+        chartCtx.stroke();
+
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = "#00f0ff";
+        chartCtx.fillText(pillText, px + (tw + 16) / 2, py + 15);
+
+    } else if (graphMode === 'amdahl') {
+        // ==========================================
+        // MODE 2: AMDAHL'S LAW TELEMETRY
+        // Vivid Neon Multi-Processor Curves
+        // ==========================================
+        chartCtx.textAlign = "center";
+        chartCtx.font = "bold 13px 'Orbitron', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("AMDAHL'S LAW: SPEEDUP vs VECTORIZABLE FRACTION (f)", w / 2, 26);
+
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#00ff88";
+        chartCtx.fillText("THEORETICAL MAXIMUM SYSTEM ACCELERATION // S(f) = 1 / ((1-f) + f/P)", w / 2, 42);
+
+        // Y-axis (0x to 20x)
+        for (let tick = 0; tick <= 20; tick += 5) {
+            const yPos = padTop + ph - (tick / 20.0) * ph;
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            chartCtx.moveTo(padLeft, yPos);
+            chartCtx.lineTo(padLeft + pw, yPos);
+            chartCtx.stroke();
+
+            chartCtx.textAlign = "right";
+            chartCtx.font = "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = "#94a3b8";
+            chartCtx.fillText(tick + "x", padLeft - 10, yPos + 3.5);
+        }
+
+        chartCtx.save();
+        chartCtx.translate(18, padTop + ph / 2);
+        chartCtx.rotate(-Math.PI / 2);
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = "#38bdf8";
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillText("Overall Speedup S(f)", 0, 0);
+        chartCtx.restore();
+
+        // X-axis (0% to 100%)
+        const fTicks = [0, 20, 40, 60, 80, 100];
+        fTicks.forEach(val => {
+            const xPos = padLeft + (val / 100) * pw;
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = val === 90 ? "rgba(245, 158, 11, 0.45)" : "rgba(255, 255, 255, 0.08)";
+            chartCtx.moveTo(xPos, padTop);
+            chartCtx.lineTo(xPos, padTop + ph);
+            chartCtx.stroke();
+
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+            chartCtx.moveTo(xPos, padTop + ph);
+            chartCtx.lineTo(xPos, padTop + ph + 5);
+            chartCtx.stroke();
+
+            chartCtx.textAlign = "center";
+            chartCtx.font = val === 90 ? "bold 10px 'JetBrains Mono', monospace" : "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = val === 90 ? "#fbbf24" : "#94a3b8";
+            chartCtx.fillText(val + "%", xPos, padTop + ph + 18);
+        });
+
+        chartCtx.textAlign = "center";
+        chartCtx.font = "11px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("Vectorizable Fraction f (%)", w / 2, h - 14);
+
+        // Distinct Vivid Neon Colors for Processor Curves
+        const factors = [
+            { p: 4, col: "#38bdf8", label: "P = 4 (Sky Blue)" },
+            { p: 8, col: "#06b6d4", label: "P = 8 (Cyan)" },
+            { p: 16, col: "#00ff88", label: "P = 16 (Emerald)" },
+            { p: 64, col: "#a855f7", label: "P = 64 (Neon Violet)" },
+            { p: Infinity, col: "#fbbf24", label: "P = ∞ (Amdahl Limit)" }
+        ];
+
+        factors.forEach(curve => {
+            chartCtx.beginPath();
+            for (let f = 0; f <= 95; f++) {
+                const fDec = f / 100;
+                const spd = curve.p === Infinity ? (1 / (1 - fDec)) : (1 / ((1 - fDec) + fDec / curve.p));
+                const clamped = Math.min(20, spd);
+                const x = padLeft + (f / 100) * pw;
+                const y = padTop + ph - (clamped / 20.0) * ph;
+                if (f === 0) chartCtx.moveTo(x, y);
+                else chartCtx.lineTo(x, y);
+            }
+            chartCtx.strokeStyle = curve.col;
+            chartCtx.lineWidth = curve.p === 16 || curve.p === Infinity ? 2.5 : 1.5;
+            if (curve.p === Infinity) {
+                chartCtx.setLineDash([6, 4]);
+                chartCtx.lineDashOffset = -animTime * 18;
+            }
+            chartCtx.stroke();
+            chartCtx.setLineDash([]);
+
+            // Running Energy Spark along each curve!
+            const sparkProg = ((animTime * 0.12 + curve.p * 0.05) % 1.0);
+            const sf = sparkProg * 95;
+            const sfDec = sf / 100;
+            const sSpd = curve.p === Infinity ? (1 / (1 - sfDec)) : (1 / ((1 - sfDec) + sfDec / curve.p));
+            const sx = padLeft + (sf / 100) * pw;
+            const sy = padTop + ph - (Math.min(20, sSpd) / 20.0) * ph;
+
+            chartCtx.save();
+            chartCtx.shadowColor = curve.col;
+            chartCtx.shadowBlur = 10;
+            chartCtx.fillStyle = curve.col;
+            chartCtx.beginPath();
+            chartCtx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+            chartCtx.fill();
+            chartCtx.restore();
+        });
+
+        // Top Legend Bar with Color Tags
+        let legX = padLeft + 14;
+        const legY = padTop + 18;
+        factors.forEach(curve => {
+            chartCtx.fillStyle = curve.col;
+            chartCtx.fillRect(legX, legY, 12, 4);
+            chartCtx.font = "bold 8.5px 'JetBrains Mono', monospace";
+            chartCtx.textAlign = "left";
+            chartCtx.fillText(curve.label, legX + 16, legY + 5);
+            legX += 105;
+        });
+
+        // Dynamic Active Cursor
+        const currentF = parseInt(document.getElementById('graphFSlider')?.value) || 90;
+        const curX = padLeft + (currentF / 100) * pw;
+        const curFDecVal = currentF / 100;
+        const sInf = (1 / (1 - curFDecVal));
+        const s16 = (1 / ((1 - curFDecVal) + curFDecVal / 16));
+        const yInf = padTop + ph - (Math.min(20, sInf) / 20.0) * ph;
+        const y16 = padTop + ph - (Math.min(20, s16) / 20.0) * ph;
+
+        chartCtx.beginPath();
+        chartCtx.strokeStyle = "rgba(245, 158, 11, 0.45)";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.setLineDash([4, 3]);
+        chartCtx.moveTo(curX, padTop);
+        chartCtx.lineTo(curX, padTop + ph);
+        chartCtx.stroke();
+        chartCtx.setLineDash([]);
+
+        // Dual Markers on P=16 and P=Infinity
+        chartCtx.beginPath();
+        chartCtx.arc(curX, yInf, 5.5, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#fbbf24";
+        chartCtx.lineWidth = 2;
+        chartCtx.stroke();
+
+        chartCtx.beginPath();
+        chartCtx.arc(curX, y16, 5.5, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#00ff88";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#ffffff";
+        chartCtx.lineWidth = 2;
+        chartCtx.stroke();
+
+        // Callout Pill
+        const aPillText = "f=" + currentF + "%: P=16 → " + s16.toFixed(2) + "x | P=∞ → " + sInf.toFixed(2) + "x";
+        chartCtx.font = "bold 9.5px 'JetBrains Mono', monospace";
+        const atw = chartCtx.measureText(aPillText).width;
+        let apx = curX - (atw + 16) / 2;
+        apx = Math.max(padLeft + 4, Math.min(padLeft + pw - atw - 20, apx));
+        let apy = Math.min(yInf, y16) - 30;
+        if (apy < padTop + 4) apy = Math.max(yInf, y16) + 14;
+
+        chartCtx.fillStyle = "rgba(14, 15, 18, 0.95)";
+        chartCtx.strokeStyle = "#fbbf24";
+        chartCtx.lineWidth = 1.2;
+        chartCtx.beginPath();
+        chartCtx.roundRect(apx, apy, atw + 16, 22, 4);
+        chartCtx.fill();
+        chartCtx.stroke();
+
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.fillText(aPillText, apx + (atw + 16) / 2, apy + 15);
+
+    } else {
+        // ==========================================
+        // MODE 3: ROOFLINE MODEL TELEMETRY
+        // Memory-Bound vs Compute-Bound Dynamic Zones
+        // ==========================================
+        chartCtx.textAlign = "center";
+        chartCtx.font = "bold 13px 'Orbitron', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("ROOFLINE MODEL: ATTAINABLE GFLOP/s vs ARITHMETIC INTENSITY", w / 2, 26);
+
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#00f0ff";
+        chartCtx.fillText("MEMORY BANDWIDTH CEILING (SLANTED) vs SIMD COMPUTE SATURATION (FLAT)", w / 2, 42);
+
+        // Y-axis (0 to 120 GFLOP/s)
+        for (let tick = 0; tick <= 120; tick += 30) {
+            const yPos = padTop + ph - (tick / 120.0) * ph;
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            chartCtx.moveTo(padLeft, yPos);
+            chartCtx.lineTo(padLeft + pw, yPos);
+            chartCtx.stroke();
+
+            chartCtx.textAlign = "right";
+            chartCtx.font = "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = "#94a3b8";
+            chartCtx.fillText(tick + " GF", padLeft - 10, yPos + 3.5);
+        }
+
+        chartCtx.save();
+        chartCtx.translate(18, padTop + ph / 2);
+        chartCtx.rotate(-Math.PI / 2);
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = "#38bdf8";
+        chartCtx.font = "10px 'JetBrains Mono', monospace";
+        chartCtx.fillText("Attainable Performance (GFLOP/s)", 0, 0);
+        chartCtx.restore();
+
+        // X-axis log scale (0.05 to 8.0 FLOPs / Byte)
+        const minI = 0.05;
+        const maxI = 8.0;
+        const xMap = (val) => padLeft + (Math.log2(val / minI) / Math.log2(maxI / minI)) * pw;
+        const xTicks = [0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0];
+
+        xTicks.forEach(val => {
+            const xPos = xMap(val);
+            chartCtx.beginPath();
+            chartCtx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            chartCtx.moveTo(xPos, padTop);
+            chartCtx.lineTo(xPos, padTop + ph);
+            chartCtx.stroke();
+
+            chartCtx.textAlign = "center";
+            chartCtx.font = "10px 'JetBrains Mono', monospace";
+            chartCtx.fillStyle = "#94a3b8";
+            chartCtx.fillText(val >= 1 ? val.toFixed(1) : String(val), xPos, padTop + ph + 18);
+        });
+
+        chartCtx.textAlign = "center";
+        chartCtx.font = "11px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.fillText("Arithmetic Intensity (FLOPs / Byte, Log Scale)", w / 2, h - 14);
+
+        const peakCompute = 96.0;
+        const memBandwidth = 64.0;
+        const kneeI = peakCompute / memBandwidth; // 1.5 FLOP/B
+        const kneeX = xMap(kneeI);
+        const kneeY = padTop + ph - (peakCompute / 120.0) * ph;
+
+        // Shaded Memory-Bound Zone (Amber / Coral)
+        chartCtx.fillStyle = "rgba(245, 158, 11, 0.08)";
+        chartCtx.beginPath();
+        chartCtx.moveTo(xMap(minI), padTop + ph);
+        chartCtx.lineTo(xMap(minI), padTop + ph - ((minI * memBandwidth) / 120.0) * ph);
+        chartCtx.lineTo(kneeX, kneeY);
+        chartCtx.lineTo(kneeX, padTop + ph);
+        chartCtx.closePath();
+        chartCtx.fill();
+
+        // Shaded Compute-Bound Zone (Cyan / Emerald)
+        chartCtx.fillStyle = "rgba(0, 240, 255, 0.08)";
+        chartCtx.beginPath();
+        chartCtx.moveTo(kneeX, padTop + ph);
+        chartCtx.lineTo(kneeX, kneeY);
+        chartCtx.lineTo(xMap(maxI), kneeY);
+        chartCtx.lineTo(xMap(maxI), padTop + ph);
+        chartCtx.closePath();
+        chartCtx.fill();
+
+        // Zone Annotations
+        chartCtx.font = "bold 9px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.textAlign = "center";
+        chartCtx.fillText("⚡ MEMORY BOUND REGION", (padLeft + kneeX) / 2, padTop + ph - 25);
+
+        chartCtx.fillStyle = "#00ff88";
+        chartCtx.fillText("🚀 COMPUTE BOUND REGION", (kneeX + padLeft + pw) / 2, padTop + ph - 25);
+
+        // Slanted Memory Line with Gradient (Amber to Cyan)
+        const slantGrad = chartCtx.createLinearGradient(xMap(minI), padTop + ph, kneeX, kneeY);
+        slantGrad.addColorStop(0, "#fbbf24");
+        slantGrad.addColorStop(1, "#00f0ff");
+
+        chartCtx.save();
+        chartCtx.shadowColor = "#00f0ff";
+        chartCtx.shadowBlur = 12;
+        chartCtx.strokeStyle = slantGrad;
+        chartCtx.lineWidth = 3;
+        chartCtx.beginPath();
+        chartCtx.moveTo(xMap(minI), padTop + ph - ((minI * memBandwidth) / 120.0) * ph);
+        chartCtx.lineTo(kneeX, kneeY);
+        chartCtx.stroke();
+
+        // Flat Compute Saturation Ceiling (Neon Emerald)
+        chartCtx.strokeStyle = "#00ff88";
+        chartCtx.shadowColor = "#00ff88";
+        chartCtx.beginPath();
+        chartCtx.moveTo(kneeX, kneeY);
+        chartCtx.lineTo(xMap(maxI), kneeY);
+        chartCtx.stroke();
+        chartCtx.restore();
+
+        // Flowing Particles Along the Roofline!
+        const rfProg = (animTime * 0.18) % 1.0;
+        let rfx, rfy;
+        if (rfProg < 0.5) {
+            const tSub = rfProg / 0.5;
+            rfx = xMap(minI) + tSub * (kneeX - xMap(minI));
+            rfy = (padTop + ph - ((minI * memBandwidth) / 120.0) * ph) + tSub * (kneeY - (padTop + ph - ((minI * memBandwidth) / 120.0) * ph));
+        } else {
+            const tSub = (rfProg - 0.5) / 0.5;
+            rfx = kneeX + tSub * (xMap(maxI) - kneeX);
+            rfy = kneeY;
+        }
+
+        chartCtx.save();
+        chartCtx.shadowColor = "#ffffff";
+        chartCtx.shadowBlur = 14;
+        chartCtx.fillStyle = "#ffffff";
+        chartCtx.beginPath();
+        chartCtx.arc(rfx, rfy, 4, 0, Math.PI * 2);
+        chartCtx.fill();
+        chartCtx.restore();
+
+        // Pulsing Knee Point
+        const kneePulse = Math.sin(animTime * 5) * 2;
+        chartCtx.beginPath();
+        chartCtx.arc(kneeX, kneeY, 6 + kneePulse, 0, Math.PI * 2);
+        chartCtx.strokeStyle = "rgba(251, 191, 36, 0.75)";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.stroke();
+
+        chartCtx.beginPath();
+        chartCtx.arc(kneeX, kneeY, 4.5, 0, Math.PI * 2);
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.fill();
+        chartCtx.font = "bold 9.5px 'JetBrains Mono', monospace";
+        chartCtx.fillStyle = "#fbbf24";
+        chartCtx.textAlign = "center";
+        chartCtx.fillText("Knee: " + kneeI.toFixed(2) + " FLOP/B", kneeX, kneeY - 12);
+
+        // Active Operational Marker
+        const curIntensityVal = Math.max(minI, Math.min(maxI, graphIntensity));
+        const curAttainable = Math.min(peakCompute, curIntensityVal * memBandwidth);
+        const curIsMem = curIntensityVal < (peakCompute / memBandwidth);
+
+        const curX = xMap(curIntensityVal);
+        const curY = padTop + ph - (curAttainable / 120.0) * ph;
+
+        chartCtx.beginPath();
+        chartCtx.strokeStyle = curIsMem ? "rgba(245, 158, 11, 0.55)" : "rgba(0, 240, 255, 0.55)";
+        chartCtx.lineWidth = 1.5;
+        chartCtx.setLineDash([4, 3]);
+        chartCtx.moveTo(curX, padTop);
+        chartCtx.lineTo(curX, padTop + ph);
+        chartCtx.stroke();
+        chartCtx.setLineDash([]);
+
+        chartCtx.save();
+        chartCtx.shadowColor = curIsMem ? "#fbbf24" : "#00ff88";
+        chartCtx.shadowBlur = 14;
+        chartCtx.beginPath();
+        chartCtx.arc(curX, curY, 6, 0, Math.PI * 2);
+        chartCtx.fillStyle = curIsMem ? "#fbbf24" : "#00ff88";
+        chartCtx.fill();
+        chartCtx.strokeStyle = "#ffffff";
+        chartCtx.lineWidth = 2;
+        chartCtx.stroke();
+        chartCtx.restore();
+
+        // Callout Pill
+        const pillText = "Intensity: " + curIntensityVal.toFixed(2) + " FLOP/B → " + curAttainable.toFixed(1) + " GFLOP/s (" + (curIsMem ? 'MEMORY BOUND' : 'COMPUTE BOUND') + ")";
+        chartCtx.font = "bold 9.5px 'JetBrains Mono', monospace";
+        const rtw = chartCtx.measureText(pillText).width;
+        let rpx = curX - (rtw + 16) / 2;
+        rpx = Math.max(padLeft + 4, Math.min(padLeft + pw - rtw - 20, rpx));
+        let rpy = curY - 30;
+        if (rpy < padTop + 4) rpy = curY + 14;
+
+        chartCtx.fillStyle = "rgba(10, 14, 20, 0.95)";
+        chartCtx.strokeStyle = curIsMem ? "#fbbf24" : "#00ff88";
+        chartCtx.lineWidth = 1.4;
+        chartCtx.beginPath();
+        chartCtx.roundRect(rpx, rpy, rtw + 16, 22, 4);
+        chartCtx.fill();
+        chartCtx.stroke();
+
+        chartCtx.textAlign = "center";
+        chartCtx.fillStyle = curIsMem ? "#fbbf24" : "#00ff88";
+        chartCtx.fillText(pillText, rpx + (rtw + 16) / 2, rpy + 15);
+    }
+
+    requestAnimationFrame(drawSpeedupChart);
+}
+
+
+/* ==========================================================================
+   INITIALIZATION & GLOBAL HOTKEYS
+   ========================================================================== */
+window.addEventListener('resize', () => {
+    resizeCanvas();
+    resizeChartCanvas();
+    drawPeCanvas();
+    drawSpeedupChart();
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    resizeCanvas();
+    resizeChartCanvas();
+    inspectLoop();
+    runSimEngine();
+    runRecommender();
+    drawPeCanvas();
+    drawSpeedupChart();
+    requestAnimationFrame(drawOscilloscope);
+});
+
+// Global Keyboard Hotkeys
+window.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+        return;
+    }
+    if (['1', '2', '3', '4'].includes(e.key)) {
+        activateTab(parseInt(e.key) - 1);
+        playCyberBeep(650, 'sine', 0.04);
+    } else if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlaySimulation();
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        stepSimulation();
+    } else if (e.key === 'r' || e.key === 'R') {
+        resetSimulation();
+    }
+});
+</script>
+</body>
+</html>
