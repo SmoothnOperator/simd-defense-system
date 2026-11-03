@@ -1,11 +1,15 @@
 # SIMD // DEFENSE SYSTEM
 ### Real-Time Computer Architecture & SIMD Vectorization Telemetry HUD
 
+[![Live Demo](https://img.shields.io/badge/LIVE_DEMO-GitHub_Pages-00f0ff?style=for-the-badge&logo=github)](https://smoothnoperator.github.io/simd-defense-system/)
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-00ff88.svg)](LICENSE)
+
+> 🌐 **Live Interactive Deployment**: [smoothnoperator.github.io/simd-defense-system](https://smoothnoperator.github.io/simd-defense-system/)  
+> 📦 **Zero-Dependency Standalone Version**: [Direct Browser Link](https://smoothnoperator.github.io/simd-defense-system/standalone.html)
 
 A high-assurance, interactive hardware telemetry platform designed to simulate, benchmark, and compare computing architectures across **Scalar CPUs**, **Vector Pipelined Units (SIMD Registers)**, and **Array Processors (Lockstep PE Systolic Mesh)**.
 
